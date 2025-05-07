@@ -1,26 +1,9 @@
-<#.SYNOPSIS
-    Assess Azure availabilities by querying Resource Graph and extracting specific properties or metadata.
-    Then those extracted information will be compared against actual 
-
-.DESCRIPTION
-    This script evaluates the availability of Azure services, resources, and SKUs across different regions.
-    When combined with the output from the 1-Collect script, it provides a comprehensive overview of potential
-    migration destinations, identifying feasible regions and the reasons for their suitability or limitations,
-    such as availability constraints per region.
-    All data, including availability details and region-specific insights, will be stored in JSON files.
-
-.EXAMPLE
-    PS C:\> .\Get-AvailabilityInformation.ps1
-    Runs the script outputs the results to the default files.
-
-.OUTPUTS
-    JSON files containing the service, resource, SKU availabilities, and per-region availabilities for a specific implementation.
-
-.NOTES
-    - Requires Azure PowerShell module to be installed and authenticated.
-#>
-
 clear-host
+Write-Host "####################################################################################################" -ForegroundColor DarkMagenta
+Write-Host "## RETRIEVING ALL AVAILABILITIES IN THIS SUBSCRIPTION                                             ##" -ForegroundColor DarkMagenta
+Write-Host "####################################################################################################" -ForegroundColor DarkMagenta
+Write-Host ""
+
 # REST API: Retrieve access token for REST API
 Write-Host "Retrieving access token for REST API" -ForegroundColor Yellow
 $AccessToken = az account get-access-token --query accessToken -o tsv
@@ -31,30 +14,33 @@ $BaseUri = "https://management.azure.com/subscriptions"
 $Headers = @{
     Authorization = "Bearer $AccessToken"
 }
-Write-Host ""
 
 # Namespaces and resource types: Start
 Write-Host "Retrieving all available namespaces and resource types" -ForegroundColor Yellow
-$Overview = az provider list --query "[].{Namespace:namespace, ResourceTypes:resourceTypes[].{Type:resourceType, Locations:locations}}" -o json | ConvertFrom-Json
+$Resources_All = az provider list --query "[].{Namespace:namespace, ResourceTypes:resourceTypes[].{Type:resourceType, Locations:locations}}" -o json | ConvertFrom-Json
 
-# Namespaces and resource types: Save namespaces and resource types to a JSON file
-Write-Host "Saving namespaces and resource types to file: Azure_Resources.json" -ForegroundColor Green
-$Overview | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Resources.json"
-Write-Host ""
+# Save namespaces and resource types to a JSON file
+Write-Host "  Saving namespaces and resource types to file: Azure_Resources.json" -ForegroundColor Green
+$Resources_All | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Resources.json"
 
 # Region information: Start
-Write-Host "Working on locations" -ForegroundColor Yellow
-Write-Host "Retrieving locations information" -ForegroundColor Green
+Write-Host "Working on regions" -ForegroundColor Yellow
+Write-Host "  Retrieving regions information" -ForegroundColor Green
 $LocationUri = "$BaseUri/$SubscriptionId/locations?api-version=2022-12-01"
 $LocationResponse = Invoke-RestMethod -Uri $LocationUri -Headers $Headers -Method Get
 
-# Region information: Move everything under metadata to the top level to flatten data, and clean up top-level ID and pairedRegion so that the subscription ID used for retrieval is removed
-Write-Host "Location information flattening and PII deletion" -ForegroundColor Green
+# Sort regions alphabetically by displayName
+Write-Host "  Sorting regions" -ForegroundColor Green
+$LocationResponse.value = $LocationResponse.value | Sort-Object displayName
+
+# Flatten metadata to the top level and remove unwanted properties
+Write-Host "  Region information flattening and PII deletion" -ForegroundColor Green
+$NewLocations = @()
 $TotalRegionsFlat = $LocationResponse.value.Count
 $CurrentFlatIndex = 0
 foreach ($region in $LocationResponse.value) {
     $CurrentFlatIndex++
-    Write-Host ("   Cleaning up location information for region {0:D3} of {1:D3}: {2}" -f $CurrentFlatIndex, $TotalRegionsFlat, $region.displayName) -ForegroundColor Blue
+    Write-Host ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $TotalRegionsFlat, $region.displayName) -ForegroundColor Blue
 
     if ($region.metadata) {
         # Remove subscription ID from pairedRegion and just keep the region name
@@ -65,51 +51,50 @@ foreach ($region in $LocationResponse.value) {
         foreach ($key in $region.metadata.PSObject.Properties.Name) {
             $region | Add-Member -MemberType NoteProperty -Name $key -Value $region.metadata.$key -Force
         }
-        # Remove the now redundant metadata property
-        $region.PSObject.Properties.Remove("metadata")
     }
-    # Remove subscription ID from top-level
-    $region.PSObject.Properties.Remove("id")
+    # Rebuild the object without metadata and id
+    $newRegion = $region | Select-Object * -ExcludeProperty metadata, id
+    $NewLocations += $newRegion
 }
+$LocationResponse.value = $NewLocations
 
-# Region information: Save regions to a JSON file
-Write-Host "Saving regions to file: Azure_Regions.json" -ForegroundColor Green
+# Save regions to a JSON file
+Write-Host "  Saving regions to file: Azure_Regions.json" -ForegroundColor Green
 $LocationResponse | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Regions.json"
-Write-Host ""
 
 # VM SKUs: Start
 Write-Host "Working on VM SKUs" -ForegroundColor Yellow
 
-# VM SKUs: Dynamically retrieve regions from Microsoft.Compute
-Write-Host "Retrieving available regions from Microsoft.Compute" -ForegroundColor Green
+# Retrieve available regions from Microsoft.Compute
+Write-Host "  Retrieving available regions from Microsoft.Compute" -ForegroundColor Green
 $ComputeProvider = az provider show --namespace Microsoft.Compute --query "resourceTypes[?resourceType=='virtualMachines'].locations[]" -o tsv
 $Regions = $ComputeProvider -split "`n"  # Split regions into an array for processing
 
-# VM SKUs: Track progress variables
+# Sort the available regions (alphabetically)
+Write-Host "  Sorting VM SKUs by location" -ForegroundColor Green
+$Regions = $Regions | Sort-Object
+
 $TotalRegions = $Regions.Count
 $CurrentRegionIndex = 0
 
-# VM SKUs: Loop through each region and query VM sizes
-Write-Host "Adding VM SKUs from consolidated locations" -ForegroundColor Green
+Write-Host "  Adding VM SKUs for consolidated regions" -ForegroundColor Green
 $VMResource = @{}
 foreach ($Region in $Regions) {
     $CurrentRegionIndex++
-    Write-Host ("   Retrieving VM SKUs for region {0:D3} of {1:D3}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region) -ForegroundColor Blue
+    Write-Host ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region) -ForegroundColor Blue
 
     # REST API endpoint for VM SKUs
-    $VMUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2021-07-01"
+    $VMUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2024-07-01"
 
     # Make the REST API call for VM SKUs
     $VMResponse = Invoke-RestMethod -Uri $VMUri -Headers $Headers -Method Get
 
     # Process the API response
     foreach ($Size in $VMResponse.value) {
-        # Check if the VM size already exists in $VMResource
         if (-not $VMResource.ContainsKey($Size.name)) {
-            # Add a new entry for this size
             $VMResource[$Size.name] = @{
-                Name      = $Size.name
-                Locations = @($Region)  # Initialize with the current region
+                Name          = $Size.name
+                Locations     = @($Region)  # Initialize with the current region
                 NumberOfCores = $Size.numberOfCores
                 MemoryInMB    = $Size.memoryInMB
             }
@@ -122,48 +107,58 @@ foreach ($Region in $Regions) {
     }
 }
 
-# VM SKUs: Convert the hash table to an array
-$VMResourceArray = $VMResource.Values
-
-# VM SKUs: Save VM SKUs to a JSON file
-Write-Host "Saving VM SKUs to file: Azure_SKUs_VM.json" -ForegroundColor Green
-$VMResourceArray | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_VM.json"
-Write-Host ""
+# Convert the hash table to an array and save the VM SKUs to a JSON file
+$VM_SKU = $VMResource.Values
+Write-Host "  Saving VM SKUs to file: Azure_SKUs_VM.json" -ForegroundColor Green
+$VM_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_VM.json"
 
 # Storage Account SKUs: Start
 Write-Host "Working on storage account SKUs" -ForegroundColor Yellow
-Write-Host "Retrieving storage account SKUs" -ForegroundColor Green
-$StorageResource = @()
+Write-Host "  Retrieving storage account SKUs" -ForegroundColor Green
+$Storage_SKU = @()
 
-# Storage Account SKUs: REST API Endpoint for Storage SKUs
+# REST API Endpoint for Storage SKUs
 $StorageUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Storage/skus?api-version=2021-01-01"
-
-# Storage Account SKUs: REST API call
 $StorageResponse = Invoke-RestMethod -Uri $StorageUri -Headers $Headers -Method Get
 
-# Storage Account SKUs: Sort $StorageResponse by single Location before Processing
-Write-Host "Sorting storage account SKUs by location" -ForegroundColor Green
+# Sort storage response by the first location value
+Write-Host "  Sorting storage account SKUs by location" -ForegroundColor Green
 $StorageResponseSorted = $StorageResponse.value | Sort-Object { $_.locations[0] }
 
-# Storage Account SKUs: Track progress for distinct storage locations
-$DistinctLocations = $StorageResponseSorted | ForEach-Object { $_.locations[0] } | Sort-Object | Get-Unique
-$TotalStorageLocations = $DistinctLocations.Count
+# Replace region names with display names in $StorageResponseSorted and property of regions not available in this subscription will be empty
+Write-Host "  Changing region names to display names" -ForegroundColor Green
+$LocationMap = @{}
+foreach ($loc in $LocationResponse.value) {
+    $LocationMap[$loc.name] = $loc.displayName
+}
+
+foreach ($obj in $StorageResponseSorted) {
+    $newLocations = @()
+    foreach ($region in $obj.locations) {
+        if ($LocationMap.ContainsKey($region)) {
+            $newLocations += $LocationMap[$region]
+        }
+    }
+    $obj.locations = $newLocations
+}
+
+# Filter out SKU objects whose locations array is empty
+Write-Host "  Removing regions not available in this subscription" -ForegroundColor Green
+$StorageResponseSorted = $StorageResponseSorted | Where-Object { $_.locations.Count -gt 0 }
+
+# Count distinct storage locations, excluding empty strings
+$TotalStorageLocations = ($StorageResponseSorted | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
 $CurrentLocationIndex = 0
 
-# Storage Account SKUs: Process the sorted Storage API response
-Write-Host "Adding storage SKUs from consolidated locations" -ForegroundColor Green
+Write-Host "  Adding storage SKUs for consolidated regions" -ForegroundColor Green
 $LastLocation = $null
 $StorageResponseSorted | ForEach-Object {
     $CurrentLocation = $_.locations[0]
-
-    # Check if the location changes and update the counter
     if ($CurrentLocation -ne $LastLocation) {
         $CurrentLocationIndex++
         $LastLocation = $CurrentLocation
-
-        Write-Host ("   Retrieving storage SKUs for region {0:D3} of {1:D3}: {2}" -f $CurrentLocationIndex, $TotalStorageLocations, $CurrentLocation) -ForegroundColor Blue
+        Write-Host ("    Retrieving storage SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentLocationIndex, $TotalStorageLocations, $CurrentLocation) -ForegroundColor Blue
     }
-
     # Convert Capabilities into individual properties
     $CapabilitiesProperties = @{}
     $_.capabilities | ForEach-Object {
@@ -175,25 +170,118 @@ $StorageResponseSorted | ForEach-Object {
             $CapabilitiesProperties[$Key] = $Value
         }
     }
-
     foreach ($Location in $_.locations) {  # Process each location as its own entry
-        $StorageResource += @{
+        $Storage_SKU += @{
             Name     = $_.name
-            Location = $Location  # Single location for storage accounts
+            Location = $Location
             Tier     = $_.tier
             Kind     = $_.kind
         }
-
         # Flatten the details properties to top-level
         foreach ($Key in $CapabilitiesProperties.Keys) {
-            $StorageResource[-1] | Add-Member -MemberType NoteProperty -Name $Key -Value $CapabilitiesProperties[$Key] -Force
+            $Storage_SKU[-1] | Add-Member -MemberType NoteProperty -Name $Key -Value $CapabilitiesProperties[$Key] -Force
         }
     }
 }
 
-# Storage Account SKUs: Save Storage SKUs to a JSON file
-Write-Host "Saving Storage SKUs to file: Azure_SKUs_Storage.json" -ForegroundColor Green
-$StorageResource | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_Storage.json"
+# Save the Storage SKUs to a JSON file
+Write-Host "  Saving Storage SKUs to file: Azure_SKUs_Storage.json" -ForegroundColor Green
+$Storage_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_Storage.json"
+
+Write-Host "  All files have been saved successfully!" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "####################################################################################################" -ForegroundColor DarkMagenta
+Write-Host "## AVAILABILITY MAPPING TO CURRENT IMPLEMENTATION                                                 ##" -ForegroundColor DarkMagenta
+Write-Host "####################################################################################################" -ForegroundColor DarkMagenta
 Write-Host ""
 
-Write-Host "All files have been saved successfully!" -ForegroundColor Green
+# Loading summary file of script 1-Collect
+Write-Host "Retrieving current implementation information" -ForegroundColor Yellow
+$SummaryFilePath = "$(Get-Location)\..\1-Collect\summary.json"
+
+if (Test-Path $SummaryFilePath) {
+    Write-Host "  Loading summary file: ../1-Collect/summary.json" -ForegroundColor Green
+    $Resources_Implementation = Get-Content -Path $SummaryFilePath | ConvertFrom-Json
+} else {
+    Write-Host "Summary file not found: ../1-Collect/summary.json" -ForegroundColor Red
+    exit
+}
+
+# Check for empty SKUs and remove 'ResourceSkus' property if its value is 'N/A'
+Write-Host "  Cleaning up SKU information with 'N/A'" -ForegroundColor Green
+$Resources_Implementation = $Resources_Implementation | ForEach-Object {
+    if (((($_.ResourceSkus -is [array]) -and ($_.ResourceSkus.Count -eq 1) -and ($_.ResourceSkus[0] -eq "N/A"))) -or ($_.ResourceSkus -eq "N/A")) {
+        $_ | Select-Object * -ExcludeProperty ResourceSkus
+    }
+    else {
+        $_
+    }
+}
+
+# Change of property name from 'AzureRegions' to 'ImplementedRegions' and region names to display names
+Write-Host "  Renaming the property 'AzureRegions' to 'ImplementedRegions' and changing region names to display names" -ForegroundColor Green
+$Resources_Implementation = $Resources_Implementation | ForEach-Object {
+    if ($_.PSObject.Properties["AzureRegions"]) {
+        $oldRegions = $_.AzureRegions
+        $newRegions = @()
+        foreach ($region in $oldRegions) {
+            if ($LocationMap.ContainsKey($region)) {
+                $newRegions += $LocationMap[$region]
+            } else {
+                $newRegions += $region
+            }
+        }
+        $_ | Add-Member -Force -MemberType NoteProperty -Name ImplementedRegions -Value $newRegions
+        $_ | Select-Object * -ExcludeProperty AzureRegions
+    }
+    else {
+        $_
+    }
+}
+
+Write-Host "Working on general availability mapping without SKU consideration" -ForegroundColor Yellow
+$TotalResourceTypes = $Resources_Implementation.Count
+$CurrentResourceTypeIndex = 0
+
+Write-Host "  Adding Azure regions with resource availability information" -ForegroundColor Green
+foreach ($resource in $Resources_Implementation) {
+    $CurrentResourceTypeIndex++
+    Write-Host ("    Processing resource type {0:D03} of {1:D03}: {2}" -f $CurrentResourceTypeIndex, $TotalResourceTypes, $resource.ResourceType) -ForegroundColor Blue
+    
+    # Split the resource type string into namespace and type (keeping everything after the first "/" as the type)
+    $splitParts = $resource.ResourceType -split "/", 2
+    if ($splitParts.Length -eq 2) {
+        $ns = $splitParts[0]
+        $rt = $splitParts[1]
+        # Find the namespace object in Resources_All
+        $nsObject = $Resources_All | Where-Object { $_.Namespace -ieq $ns }
+        if ($nsObject) {
+            # Locate the corresponding resource type under that namespace
+            $resourceTypeObject = $nsObject.ResourceTypes | Where-Object { $_.Type -ieq $rt }
+            if ($resourceTypeObject) {
+                # Create a mapped regions array directly using $LocationResponse.value
+                $MappedRegions = @()
+                foreach ($region in $LocationResponse.value) {
+                    $availability = if ($resourceTypeObject.Locations -contains $region.displayName) { "true" } else { "false" }
+                    $MappedRegions += New-Object -TypeName PSObject -Property @{
+                        region    = $region.displayName
+                        available = $availability
+                    }
+                }
+                # Add or replace the AllRegions property with the mapped availability array
+                $resource | Add-Member -Force -MemberType NoteProperty -Name AllRegions -Value $MappedRegions
+            } else {
+                Write-Host ("      Resource type '{0}' under namespace '{1}' not found in Resources_All" -f $rt, $ns) -ForegroundColor Red
+            }
+        } else {
+            Write-Host ("      Namespace '{0}' not found in Resources_All" -f $ns) -ForegroundColor Red
+        }
+    } else {
+        Write-Host ("      Invalid ResourceType format: {0}" -f $resource.ResourceType) -ForegroundColor Red
+    }
+}
+
+# Save the availability mapping to a JSON file
+Write-Host "  Saving availability mapping to file: Availability_Mapping.json" -ForegroundColor Green
+$Resources_Implementation | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Availability_Mapping.json"

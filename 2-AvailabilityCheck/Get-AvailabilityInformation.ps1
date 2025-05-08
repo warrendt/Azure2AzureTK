@@ -27,21 +27,25 @@ Write-Output "## RETRIEVING ALL AVAILABILITIES IN THIS SUBSCRIPTION             
 Write-Output "####################################################################################################"
 Write-Output ""
 
-# REST API: Retrieve access token for REST API
-Write-Output "Retrieving access token for REST API"
-$AccessToken = az account get-access-token --query accessToken -o tsv
-$SubscriptionId = az account show --query id -o tsv  # Automatically retrieve the current subscription ID
-$BaseUri = "https://management.azure.com/subscriptions"
-
-# REST API: Define headers with the access token
-$Headers = @{
-    Authorization = "Bearer $AccessToken"
+# Initialize REST API
+Write-Output "Initializing REST API"
+Write-Output "  Retrieving access token and subscription ID"
+$AzAccessTokenSecure = Get-AzAccessToken -AsSecureString
+$SecureToken = $AzAccessTokenSecure.Token
+$REST_AccessToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureToken))
+$REST_SubscriptionId = (Get-AzContext).Subscription.Id
+Write-Output "    Access token and Subscription ID successfully retrieved"
+Write-Output "    Subscription ID: $REST_SubscriptionId"
+Write-Output "  Setting up BaseUri and headers"
+$REST_BaseUri = "https://management.azure.com/subscriptions"
+$REST_Headers = @{
+    Authorization = "Bearer $REST_AccessToken"
 }
 
 # Providers: Start
 Write-Output "Retrieving all available provider"
-$Providers_Uri = "$BaseUri/$SubscriptionId/providers?api-version=2021-04-01"
-$Providers_Response = Invoke-RestMethod -Uri $Providers_Uri -Headers $Headers -Method Get
+$Providers_Uri = "$REST_BaseUri/$REST_SubscriptionId/providers?api-version=2021-04-01"
+$Providers_Response = Invoke-RestMethod -Uri $Providers_Uri -Headers $REST_Headers -Method Get
 
 # Transform the response to the desired structure
 $Resources_All = foreach ($provider in $Providers_Response.value) {
@@ -67,21 +71,21 @@ $Resources_All | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Prov
 # Region information: Start
 Write-Output "Working on regions"
 Write-Output "  Retrieving regions information"
-$LocationUri = "$BaseUri/$SubscriptionId/locations?api-version=2022-12-01"
-$LocationResponse = Invoke-RestMethod -Uri $LocationUri -Headers $Headers -Method Get
+$Location_Uri = "$REST_BaseUri/$REST_SubscriptionId/locations?api-version=2022-12-01"
+$Location_Response = Invoke-RestMethod -Uri $Location_Uri -Headers $REST_Headers -Method Get
 
 # Sort regions alphabetically by displayName
 Write-Output "  Sorting regions"
-$LocationResponse.value = $LocationResponse.value | Sort-Object displayName
+$Location_Response.value = $Location_Response.value | Sort-Object displayName
 
 # Flatten metadata to the top level and remove unwanted properties
 Write-Output "  Region information flattening and PII deletion"
-$NewLocations = @()
-$VM_TotalRegionsFlat = $LocationResponse.value.Count
-$CurrentFlatIndex = 0
-foreach ($Region in $LocationResponse.value) {
-    $CurrentFlatIndex++
-    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $VM_TotalRegionsFlat, $Region.displayName)
+$Location_NewLocations = @()
+$Location_TotalLocations = $Location_Response.value.Count
+$Location_CurrentLocationIndex = 0
+foreach ($Region in $Location_Response.value) {
+    $Location_CurrentLocationIndex++
+    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $Location_CurrentLocationIndex, $Location_TotalLocations, $Region.displayName)
     if ($Region.metadata) {
         # Remove subscription ID from pairedRegion and just keep the region name
         if ($Region.metadata.pairedRegion) {
@@ -94,19 +98,19 @@ foreach ($Region in $LocationResponse.value) {
     }
     # Rebuild the object without metadata and id
     $newRegion = $Region | Select-Object * -ExcludeProperty metadata, id
-    $NewLocations += $newRegion
+    $Location_NewLocations += $newRegion
 }
-$LocationResponse.value = $NewLocations
+$Location_Response.value = $Location_NewLocations
 
 # Save regions to a JSON file
 Write-Output "  Saving regions to file: Azure_Regions.json"
-$LocationResponse | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Regions.json"
+$Location_Response | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Regions.json"
 
 # VM SKUs: Start
 Write-Output "Working on VM SKUs"
 Write-Output "  Retrieving VM SKU regions information"
-$VM_Uri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute?api-version=2025-03-01"
-$VM_Response = Invoke-RestMethod -Uri $VM_Uri -Headers $Headers -Method Get
+$VM_Uri = "$REST_BaseUri/$REST_SubscriptionId/providers/Microsoft.Compute?api-version=2025-03-01"
+$VM_Response = Invoke-RestMethod -Uri $VM_Uri -Headers $REST_Headers -Method Get
 
 # Filter for the resource type "virtualMachines" and extract its locations array
 $VM_Regions = ($VM_Response.resourceTypes | Where-Object { $_.resourceType -eq "virtualMachines" }).locations | Sort-Object
@@ -115,21 +119,17 @@ $VM_Regions = ($VM_Response.resourceTypes | Where-Object { $_.resourceType -eq "
 Write-Output "  Adding VM SKUs for consolidated regions"
 $VM_TotalRegions = $VM_Regions.Count
 $VM_CurrentRegionIndex = 0
-$VMResource = @{}
+$VM_HashSKU = @{}
 foreach ($Region in $VM_Regions) {
     $VM_CurrentRegionIndex++
     Write-Output ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $VM_CurrentRegionIndex, $VM_TotalRegions, $Region)
-
     # REST API endpoint for VM SKUs
-    $VMUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2024-07-01"
-
-    # Make the REST API call for VM SKUs
-    $VMResponse = Invoke-RestMethod -Uri $VMUri -Headers $Headers -Method Get
-
+    $VM_Uri2 = "$REST_BaseUri/$REST_SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2024-07-01"
+    $VM_Response2 = Invoke-RestMethod -Uri $VM_Uri2 -Headers $REST_Headers -Method Get
     # Process the API response
-    foreach ($Size in $VMResponse.value) {
-        if (-not $VMResource.ContainsKey($Size.name)) {
-            $VMResource[$Size.name] = @{
+    foreach ($Size in $VM_Response2.value) {
+        if (-not $VM_HashSKU.ContainsKey($Size.name)) {
+            $VM_HashSKU[$Size.name] = @{
                 Name          = $Size.name
                 Locations     = @($Region)  # Initialize with the current region
                 NumberOfCores = $Size.numberOfCores
@@ -137,15 +137,15 @@ foreach ($Region in $VM_Regions) {
             }
         } else {
             # Add the region to the existing size's locations, ensuring no duplicates
-            if (-not ($VMResource[$Size.name].Locations -contains $Region)) {
-                $VMResource[$Size.name].Locations += $Region
+            if (-not ($VM_HashSKU[$Size.name].Locations -contains $Region)) {
+                $VM_HashSKU[$Size.name].Locations += $Region
             }
         }
     }
 }
 
 # Convert the hash table to an array and save the VM SKUs to a JSON file
-$VM_SKU = $VMResource.Values
+$VM_SKU = $VM_HashSKU.Values
 Write-Output "  Saving VM SKUs to file: Azure_SKUs_VM.json"
 $VM_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_VM.json"
 
@@ -155,8 +155,8 @@ Write-Output "  Retrieving storage account SKUs"
 $StorageAccount_SKU = @()
 
 # REST API Endpoint for storage account SKUs
-$StorageAccount_Uri = "$BaseUri/$SubscriptionId/providers/Microsoft.Storage/skus?api-version=2021-01-01"
-$StorageAccount_Response = Invoke-RestMethod -Uri $StorageAccount_Uri -Headers $Headers -Method Get
+$StorageAccount_Uri = "$REST_BaseUri/$REST_SubscriptionId/providers/Microsoft.Storage/skus?api-version=2021-01-01"
+$StorageAccount_Response = Invoke-RestMethod -Uri $StorageAccount_Uri -Headers $REST_Headers -Method Get
 
 # Sort storage account response by the first location value
 Write-Output "  Sorting storage account SKUs by location"
@@ -164,19 +164,19 @@ $StorageAccount_Response = $StorageAccount_Response.value | Sort-Object { $_.loc
 
 # Replace region names with display names in $StorageAccount_Response and property of regions not available in this subscription will be empty
 Write-Output "  Changing region names to display names"
-$LocationMap = @{}
-foreach ($loc in $LocationResponse.value) {
-    $LocationMap[$loc.name] = $loc.displayName
+$Location_Map = @{}
+foreach ($loc in $Location_Response.value) {
+    $Location_Map[$loc.name] = $loc.displayName
 }
 
 foreach ($obj in $StorageAccount_Response) {
-    $newLocations = @()
+    $StorageAccount_NewLocations = @()
     foreach ($Region in $obj.locations) {
-        if ($LocationMap.ContainsKey($Region)) {
-            $newLocations += $LocationMap[$Region]
+        if ($Location_Map.ContainsKey($Region)) {
+            $StorageAccount_NewLocations += $Location_Map[$Region]
         }
     }
-    $obj.locations = $newLocations
+    $obj.locations = $StorageAccount_NewLocations
 }
 
 # Filter out SKU objects whose locations array is empty
@@ -184,17 +184,16 @@ Write-Output "  Removing regions not available in this subscription"
 $StorageAccount_Response = $StorageAccount_Response | Where-Object { $_.locations.Count -gt 0 }
 
 # Count distinct storage account locations, excluding empty strings
-$TotalStorageLocations = ($StorageAccount_Response | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
-$CurrentLocationIndex = 0
-
 Write-Output "  Adding storage account SKUs for consolidated regions"
 $LastLocation = $null
+$StorageAccount_TotalLocations = ($StorageAccount_Response | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
+$StorageAccount_CurrentLocationIndex = 0
 $StorageAccount_Response | ForEach-Object {
-    $CurrentLocation = $_.locations[0]
-    if ($CurrentLocation -ne $LastLocation) {
-        $CurrentLocationIndex++
-        $LastLocation = $CurrentLocation
-        Write-Output ("    Retrieving storage account SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentLocationIndex, $TotalStorageLocations, $CurrentLocation)
+    $StorageAccount_CurrentLocation = $_.locations[0]
+    if ($StorageAccount_CurrentLocation -ne $LastLocation) {
+        $StorageAccount_CurrentLocationIndex++
+        $LastLocation = $StorageAccount_CurrentLocation
+        Write-Output ("    Retrieving storage account SKUs for region {0:D03} of {1:D03}: {2}" -f $StorageAccount_CurrentLocationIndex, $StorageAccount_TotalLocations, $StorageAccount_CurrentLocation)
     }
     # Convert Capabilities into individual properties
     $CapabilitiesProperties = @{}
@@ -263,8 +262,8 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
     if ($obj.PSObject.Properties["AzureRegions"]) {
         $newRegions = @()
         foreach ($Region in $obj.AzureRegions) {
-            if ($LocationMap.ContainsKey($Region)) {
-                $newRegions += $LocationMap[$Region]
+            if ($Location_Map.ContainsKey($Region)) {
+                $newRegions += $Location_Map[$Region]
             }
             else {
                 $newRegions += $Region
@@ -288,13 +287,14 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
 
 # General availability mapping (without SKUs): Start
 Write-Output "Working on general availability mapping without SKU consideration"
-$CurrentResourceTypeIndex = 0
 
 # Map current implementation data to general Azure region availabilities
 Write-Output "  Adding Azure regions with resource availability information"
+$Resources_TotalImplementations = $Resources_Implementation.Count
+$Resources_CurrentImplementationIndex = 0
 foreach ($resource in $Resources_Implementation) {
-    $CurrentResourceTypeIndex++
-    Write-Output ("    Processing resource type {0:D03} of {1:D03}: {2}" -f $CurrentResourceTypeIndex, $Resources_Implementation.Count, $resource.ResourceType)
+    $Resources_CurrentImplementationIndex++
+    Write-Output ("    Processing resource type {0:D03} of {1:D03}: {2}" -f $Resources_CurrentImplementationIndex, $Resources_TotalImplementations, $resource.ResourceType)
     # Split the resource type string into namespace and type (keeping everything after the first "/" as the type)
     $splitParts = $resource.ResourceType -split "/", 2
     if ($splitParts.Length -eq 2) {
@@ -306,9 +306,9 @@ foreach ($resource in $Resources_Implementation) {
             # Locate the corresponding resource type under that namespace
             $resourceTypeObject = $nsObject.ResourceTypes | Where-Object { $_.Type -ieq $rt }
             if ($resourceTypeObject) {
-                # Create a mapped regions array directly using $LocationResponse.value
+                # Create a mapped regions array directly using $Location_Response.value
                 $MappedRegions = @()
-                foreach ($Region in $LocationResponse.value) {
+                foreach ($Region in $Location_Response.value) {
                     $availability = if ($resourceTypeObject.Locations -contains $Region.displayName) { "true" } else { "false" }
                     $MappedRegions += New-Object -TypeName PSObject -Property @{
                         region    = $Region.displayName

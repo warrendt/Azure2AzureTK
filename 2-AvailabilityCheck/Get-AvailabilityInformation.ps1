@@ -1,6 +1,6 @@
 <#.SYNOPSIS
     Assess Azure availabilities by querying Resource Graph and extracting specific properties or metadata.
-    Then those extracted information will be compared against actual 
+    Then those extracted information will be compared against actual
 
 .DESCRIPTION
     This script evaluates the availability of Azure services, resources, and SKUs across different regions.
@@ -258,7 +258,7 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
 # Change of property names to better show current implementation
 Write-Output "  Massaging implementation data"
 $Resources_Implementation = $Resources_Implementation | ForEach-Object {
-    $obj = $_    
+    $obj = $_
     # Rename 'AzureRegions' to 'ImplementedRegions'
     if ($obj.PSObject.Properties["AzureRegions"]) {
         $newRegions = @()
@@ -272,7 +272,7 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
         }
         $obj | Add-Member -Force -MemberType NoteProperty -Name ImplementedRegions -Value $newRegions
         $obj = $obj | Select-Object * -ExcludeProperty AzureRegions
-    }    
+    }
     # Rename 'ResourceSkus' to 'ImplementedSkus'
     if ($obj.PSObject.Properties["ResourceSkus"]) {
         $newSkus = @()
@@ -282,7 +282,7 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
         $obj | Add-Member -Force -MemberType NoteProperty -Name ImplementedSkus -Value $newSkus
         $obj = $obj | Select-Object * -ExcludeProperty ResourceSkus
     }
-    
+
     $obj
 }
 

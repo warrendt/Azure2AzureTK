@@ -1,3 +1,26 @@
+<#.SYNOPSIS
+    Assess Azure availabilities by querying Resource Graph and extracting specific properties or metadata.
+    Then those extracted information will be compared against actual 
+
+.DESCRIPTION
+    This script evaluates the availability of Azure services, resources, and SKUs across different regions.
+    When combined with the output from the 1-Collect script, it provides a comprehensive overview of potential
+    migration destinations, identifying feasible regions and the reasons for their suitability or limitations,
+    such as availability constraints per region.
+    All data, including availability details and region-specific insights, will be stored in JSON files.
+
+.EXAMPLE
+    PS C:\> .\Get-AvailabilityInformation.ps1
+    Runs the script outputs the results to the default files.
+
+.OUTPUTS
+    JSON files containing the providers and SKU availabilities in line with per-region availabilities for a specific implementation.
+
+.NOTES
+    - Requires Azure PowerShell module to be installed and authenticated.
+#>
+
+# Main script
 clear-host
 Write-Output "####################################################################################################"
 Write-Output "## RETRIEVING ALL AVAILABILITIES IN THIS SUBSCRIPTION                                             ##"
@@ -15,13 +38,31 @@ $Headers = @{
     Authorization = "Bearer $AccessToken"
 }
 
-# Namespaces and resource types: Start
-Write-Output "Retrieving all available namespaces and resource types"
-$Resources_All = az provider list --query "[].{Namespace:namespace, ResourceTypes:resourceTypes[].{Type:resourceType, Locations:locations}}" -o json | ConvertFrom-Json
+# Providers: Start
+Write-Output "Retrieving all available provider"
+$Providers_Uri = "$BaseUri/$SubscriptionId/providers?api-version=2021-04-01"
+$Providers_Response = Invoke-RestMethod -Uri $Providers_Uri -Headers $Headers -Method Get
 
-# Save namespaces and resource types to a JSON file
-Write-Output "  Saving namespaces and resource types to file: Azure_Resources.json"
-$Resources_All | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Resources.json"
+# Transform the response to the desired structure
+$Resources_All = foreach ($provider in $Providers_Response.value) {
+    # Build an array of resource types using plain hashtables
+    $rtArray = @()
+    foreach ($rt in $provider.resourceTypes) {
+        $rtArray += @{
+            Type      = $rt.resourceType
+            Locations = $rt.locations
+        }
+    }
+    # Return a hashtable for each provider
+    @{
+        Namespace     = $provider.namespace
+        ResourceTypes = $rtArray
+    }
+}
+
+# Save providers to a JSON file
+Write-Output "  Saving providers to file: Azure_Providers.json"
+$Resources_All | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_Providers.json"
 
 # Region information: Start
 Write-Output "Working on regions"
@@ -36,11 +77,11 @@ $LocationResponse.value = $LocationResponse.value | Sort-Object displayName
 # Flatten metadata to the top level and remove unwanted properties
 Write-Output "  Region information flattening and PII deletion"
 $NewLocations = @()
-$TotalRegionsFlat = $LocationResponse.value.Count
+$VM_TotalRegionsFlat = $LocationResponse.value.Count
 $CurrentFlatIndex = 0
 foreach ($region in $LocationResponse.value) {
     $CurrentFlatIndex++
-    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $TotalRegionsFlat, $region.displayName)
+    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $VM_TotalRegionsFlat, $region.displayName)
     if ($region.metadata) {
         # Remove subscription ID from pairedRegion and just keep the region name
         if ($region.metadata.pairedRegion) {
@@ -63,24 +104,21 @@ $LocationResponse | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_R
 
 # VM SKUs: Start
 Write-Output "Working on VM SKUs"
+Write-Output "  Retrieving VM SKU regions information"
+$VM_Uri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute?api-version=2025-03-01"
+$VM_Response = Invoke-RestMethod -Uri $VM_Uri -Headers $Headers -Method Get
 
-# Retrieve available regions from Microsoft.Compute
-Write-Output "  Retrieving available regions from Microsoft.Compute"
-$ComputeProvider = az provider show --namespace Microsoft.Compute --query "resourceTypes[?resourceType=='virtualMachines'].locations[]" -o tsv
-$Regions = $ComputeProvider -split "`n"  # Split regions into an array for processing
+# Filter for the resource type "virtualMachines" and extract its locations array
+$VM_Locations = ($VM_Response.resourceTypes | Where-Object { $_.resourceType -eq "virtualMachines" }).locations | Sort-Object
 
-# Sort the available regions (alphabetically)
-Write-Output "  Sorting VM SKUs by location"
-$Regions = $Regions | Sort-Object
-
-$TotalRegions = $Regions.Count
+$VM_TotalRegions = $VM_Locations.Count
 $CurrentRegionIndex = 0
 
 Write-Output "  Adding VM SKUs for consolidated regions"
 $VMResource = @{}
-foreach ($Region in $Regions) {
+foreach ($Region in $VM_Locations) {
     $CurrentRegionIndex++
-    Write-Output ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region)
+    Write-Output ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $VM_TotalRegions, $Region)
 
     # REST API endpoint for VM SKUs
     $VMUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2024-07-01"
@@ -114,24 +152,24 @@ $VM_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_VM.jso
 # Storage Account SKUs: Start
 Write-Output "Working on storage account SKUs"
 Write-Output "  Retrieving storage account SKUs"
-$Storage_SKU = @()
+$StorageAccount_SKU = @()
 
-# REST API Endpoint for Storage SKUs
-$StorageUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Storage/skus?api-version=2021-01-01"
-$StorageResponse = Invoke-RestMethod -Uri $StorageUri -Headers $Headers -Method Get
+# REST API Endpoint for storage account SKUs
+$StorageAccount_Uri = "$BaseUri/$SubscriptionId/providers/Microsoft.Storage/skus?api-version=2021-01-01"
+$StorageAccount_Response = Invoke-RestMethod -Uri $StorageAccount_Uri -Headers $Headers -Method Get
 
-# Sort storage response by the first location value
+# Sort storage account response by the first location value
 Write-Output "  Sorting storage account SKUs by location"
-$StorageResponseSorted = $StorageResponse.value | Sort-Object { $_.locations[0] }
+$StorageAccount_ResponseSorted = $StorageAccount_Response.value | Sort-Object { $_.locations[0] }
 
-# Replace region names with display names in $StorageResponseSorted and property of regions not available in this subscription will be empty
+# Replace region names with display names in $StorageAccount_ResponseSorted and property of regions not available in this subscription will be empty
 Write-Output "  Changing region names to display names"
 $LocationMap = @{}
 foreach ($loc in $LocationResponse.value) {
     $LocationMap[$loc.name] = $loc.displayName
 }
 
-foreach ($obj in $StorageResponseSorted) {
+foreach ($obj in $StorageAccount_ResponseSorted) {
     $newLocations = @()
     foreach ($region in $obj.locations) {
         if ($LocationMap.ContainsKey($region)) {
@@ -143,20 +181,20 @@ foreach ($obj in $StorageResponseSorted) {
 
 # Filter out SKU objects whose locations array is empty
 Write-Output "  Removing regions not available in this subscription"
-$StorageResponseSorted = $StorageResponseSorted | Where-Object { $_.locations.Count -gt 0 }
+$StorageAccount_ResponseSorted = $StorageAccount_ResponseSorted | Where-Object { $_.locations.Count -gt 0 }
 
-# Count distinct storage locations, excluding empty strings
-$TotalStorageLocations = ($StorageResponseSorted | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
+# Count distinct storage account locations, excluding empty strings
+$TotalStorageLocations = ($StorageAccount_ResponseSorted | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
 $CurrentLocationIndex = 0
 
-Write-Output "  Adding storage SKUs for consolidated regions"
+Write-Output "  Adding storage account SKUs for consolidated regions"
 $LastLocation = $null
-$StorageResponseSorted | ForEach-Object {
+$StorageAccount_ResponseSorted | ForEach-Object {
     $CurrentLocation = $_.locations[0]
     if ($CurrentLocation -ne $LastLocation) {
         $CurrentLocationIndex++
         $LastLocation = $CurrentLocation
-        Write-Output ("    Retrieving storage SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentLocationIndex, $TotalStorageLocations, $CurrentLocation)
+        Write-Output ("    Retrieving storage account SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentLocationIndex, $TotalStorageLocations, $CurrentLocation)
     }
     # Convert Capabilities into individual properties
     $CapabilitiesProperties = @{}
@@ -170,7 +208,7 @@ $StorageResponseSorted | ForEach-Object {
         }
     }
     foreach ($Location in $_.locations) {  # Process each location as its own entry
-        $Storage_SKU += @{
+        $StorageAccount_SKU += @{
             Name     = $_.name
             Location = $Location
             Tier     = $_.tier
@@ -178,14 +216,14 @@ $StorageResponseSorted | ForEach-Object {
         }
         # Flatten the details properties to top-level
         foreach ($Key in $CapabilitiesProperties.Keys) {
-            $Storage_SKU[-1] | Add-Member -MemberType NoteProperty -Name $Key -Value $CapabilitiesProperties[$Key] -Force
+            $StorageAccount_SKU[-1] | Add-Member -MemberType NoteProperty -Name $Key -Value $CapabilitiesProperties[$Key] -Force
         }
     }
 }
 
-# Save the Storage SKUs to a JSON file
-Write-Output "  Saving Storage SKUs to file: Azure_SKUs_Storage.json"
-$Storage_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_Storage.json"
+# Save the storage account SKUs to a JSON file
+Write-Output "  Saving storage account SKUs to file: Azure_SKUs_StorageAccount.json"
+$StorageAccount_SKU | ConvertTo-Json -Depth 10 | Out-File "$(Get-Location)\Azure_SKUs_StorageAccount.json"
 Write-Output "  All files have been saved successfully!"
 
 Write-Output ""
@@ -194,7 +232,7 @@ Write-Output "## AVAILABILITY MAPPING TO CURRENT IMPLEMENTATION                 
 Write-Output "####################################################################################################"
 Write-Output ""
 
-# Loading summary file of script 1-Collect
+# Processing and data massaging of summary file of script 1-Collect: Start
 Write-Output "Retrieving current implementation information"
 $SummaryFilePath = "$(Get-Location)\..\1-Collect\summary.json"
 
@@ -206,8 +244,8 @@ if (Test-Path $SummaryFilePath) {
     exit
 }
 
-# Check for empty SKUs and remove 'ResourceSkus' property if its value is 'N/A'
-Write-Output "  Cleaning up SKU information with 'N/A'"
+# Check for empty SKUs and remove 'ResourceSkus' property if its value is 'N/A' in current implementation data
+Write-Output "  Cleaning up implementation data"
 $Resources_Implementation = $Resources_Implementation | ForEach-Object {
     if (((($_.ResourceSkus -is [array]) -and ($_.ResourceSkus.Count -eq 1) -and ($_.ResourceSkus[0] -eq "N/A"))) -or ($_.ResourceSkus -eq "N/A")) {
         $_ | Select-Object * -ExcludeProperty ResourceSkus
@@ -217,31 +255,43 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
     }
 }
 
-# Change of property name from 'AzureRegions' to 'ImplementedRegions' and region names to display names
-Write-Output "  Renaming the property 'AzureRegions' to 'ImplementedRegions' and changing region names to display names"
+# Change of property names to better show current implementation
+Write-Output "  Massaging implementation data"
 $Resources_Implementation = $Resources_Implementation | ForEach-Object {
-    if ($_.PSObject.Properties["AzureRegions"]) {
-        $oldRegions = $_.AzureRegions
+    $obj = $_    
+    # Rename 'AzureRegions' to 'ImplementedRegions'
+    if ($obj.PSObject.Properties["AzureRegions"]) {
         $newRegions = @()
-        foreach ($region in $oldRegions) {
+        foreach ($region in $obj.AzureRegions) {
             if ($LocationMap.ContainsKey($region)) {
                 $newRegions += $LocationMap[$region]
-            } else {
+            }
+            else {
                 $newRegions += $region
             }
         }
-        $_ | Add-Member -Force -MemberType NoteProperty -Name ImplementedRegions -Value $newRegions
-        $_ | Select-Object * -ExcludeProperty AzureRegions
+        $obj | Add-Member -Force -MemberType NoteProperty -Name ImplementedRegions -Value $newRegions
+        $obj = $obj | Select-Object * -ExcludeProperty AzureRegions
+    }    
+    # Rename 'ResourceSkus' to 'ImplementedSkus'
+    if ($obj.PSObject.Properties["ResourceSkus"]) {
+        $newSkus = @()
+        foreach ($sku in $obj.ResourceSkus) {
+            $newSkus += $sku
+        }
+        $obj | Add-Member -Force -MemberType NoteProperty -Name ImplementedSkus -Value $newSkus
+        $obj = $obj | Select-Object * -ExcludeProperty ResourceSkus
     }
-    else {
-        $_
-    }
+    
+    $obj
 }
 
+# General availability mapping (without SKUs): Start
 Write-Output "Working on general availability mapping without SKU consideration"
 $TotalResourceTypes = $Resources_Implementation.Count
 $CurrentResourceTypeIndex = 0
 
+# Map current implementation data to general Azure region availabilities
 Write-Output "  Adding Azure regions with resource availability information"
 foreach ($resource in $Resources_Implementation) {
     $CurrentResourceTypeIndex++
@@ -278,6 +328,32 @@ foreach ($resource in $Resources_Implementation) {
         Write-Output ("      Invalid ResourceType format: {0}" -f $resource.ResourceType)
     }
 }
+
+# Availability SKU mapping (without SKUs): Start
+Write-Output "Working on availability SKU mapping"
+
+
+# Add the SKUs property to each region in the AllRegions array when the resource type is available in that region
+Write-Output "  Adding implemented SKUs to Azure regions with general availability"
+foreach ($resource in $Resources_Implementation) {
+    if ($resource.ImplementedSkus) {
+        foreach ($region in $resource.AllRegions) {
+            if ($region.available -eq "true") {
+                # Add the SKUs property containing the array from the current resource object.
+                $region | Add-Member -MemberType NoteProperty -Name SKUs -Value $resource.ImplementedSkus -Force
+            }
+        }
+    }
+}
+
+# Availability SKU mapping storage accounts: Start
+
+### TBD ###
+
+
+
+
+
 
 # Save the availability mapping to a JSON file
 Write-Output "  Saving availability mapping to file: Availability_Mapping.json"

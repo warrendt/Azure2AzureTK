@@ -79,21 +79,21 @@ Write-Output "  Region information flattening and PII deletion"
 $NewLocations = @()
 $VM_TotalRegionsFlat = $LocationResponse.value.Count
 $CurrentFlatIndex = 0
-foreach ($region in $LocationResponse.value) {
+foreach ($Region in $LocationResponse.value) {
     $CurrentFlatIndex++
-    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $VM_TotalRegionsFlat, $region.displayName)
-    if ($region.metadata) {
+    Write-Output ("    Removing information for region {0:D03} of {1:D03}: {2}" -f $CurrentFlatIndex, $VM_TotalRegionsFlat, $Region.displayName)
+    if ($Region.metadata) {
         # Remove subscription ID from pairedRegion and just keep the region name
-        if ($region.metadata.pairedRegion) {
-            $region.metadata.pairedRegion = $region.metadata.pairedRegion | ForEach-Object { $_.name }
+        if ($Region.metadata.pairedRegion) {
+            $Region.metadata.pairedRegion = $Region.metadata.pairedRegion | ForEach-Object { $_.name }
         }
         # Lift all properties from metadata to the top level
-        foreach ($key in $region.metadata.PSObject.Properties.Name) {
-            $region | Add-Member -MemberType NoteProperty -Name $key -Value $region.metadata.$key -Force
+        foreach ($key in $Region.metadata.PSObject.Properties.Name) {
+            $Region | Add-Member -MemberType NoteProperty -Name $key -Value $Region.metadata.$key -Force
         }
     }
     # Rebuild the object without metadata and id
-    $newRegion = $region | Select-Object * -ExcludeProperty metadata, id
+    $newRegion = $Region | Select-Object * -ExcludeProperty metadata, id
     $NewLocations += $newRegion
 }
 $LocationResponse.value = $NewLocations
@@ -109,16 +109,16 @@ $VM_Uri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute?api-version=2025
 $VM_Response = Invoke-RestMethod -Uri $VM_Uri -Headers $Headers -Method Get
 
 # Filter for the resource type "virtualMachines" and extract its locations array
-$VM_Locations = ($VM_Response.resourceTypes | Where-Object { $_.resourceType -eq "virtualMachines" }).locations | Sort-Object
+$VM_Regions = ($VM_Response.resourceTypes | Where-Object { $_.resourceType -eq "virtualMachines" }).locations | Sort-Object
 
-$VM_TotalRegions = $VM_Locations.Count
-$CurrentRegionIndex = 0
-
+# Retrieve SKU information for every region where VM SKUs are available
 Write-Output "  Adding VM SKUs for consolidated regions"
+$VM_TotalRegions = $VM_Regions.Count
+$VM_CurrentRegionIndex = 0
 $VMResource = @{}
-foreach ($Region in $VM_Locations) {
-    $CurrentRegionIndex++
-    Write-Output ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $VM_TotalRegions, $Region)
+foreach ($Region in $VM_Regions) {
+    $VM_CurrentRegionIndex++
+    Write-Output ("    Retrieving VM SKUs for region {0:D03} of {1:D03}: {2}" -f $VM_CurrentRegionIndex, $VM_TotalRegions, $Region)
 
     # REST API endpoint for VM SKUs
     $VMUri = "$BaseUri/$SubscriptionId/providers/Microsoft.Compute/locations/$Region/vmSizes?api-version=2024-07-01"
@@ -160,20 +160,20 @@ $StorageAccount_Response = Invoke-RestMethod -Uri $StorageAccount_Uri -Headers $
 
 # Sort storage account response by the first location value
 Write-Output "  Sorting storage account SKUs by location"
-$StorageAccount_ResponseSorted = $StorageAccount_Response.value | Sort-Object { $_.locations[0] }
+$StorageAccount_Response = $StorageAccount_Response.value | Sort-Object { $_.locations[0] }
 
-# Replace region names with display names in $StorageAccount_ResponseSorted and property of regions not available in this subscription will be empty
+# Replace region names with display names in $StorageAccount_Response and property of regions not available in this subscription will be empty
 Write-Output "  Changing region names to display names"
 $LocationMap = @{}
 foreach ($loc in $LocationResponse.value) {
     $LocationMap[$loc.name] = $loc.displayName
 }
 
-foreach ($obj in $StorageAccount_ResponseSorted) {
+foreach ($obj in $StorageAccount_Response) {
     $newLocations = @()
-    foreach ($region in $obj.locations) {
-        if ($LocationMap.ContainsKey($region)) {
-            $newLocations += $LocationMap[$region]
+    foreach ($Region in $obj.locations) {
+        if ($LocationMap.ContainsKey($Region)) {
+            $newLocations += $LocationMap[$Region]
         }
     }
     $obj.locations = $newLocations
@@ -181,15 +181,15 @@ foreach ($obj in $StorageAccount_ResponseSorted) {
 
 # Filter out SKU objects whose locations array is empty
 Write-Output "  Removing regions not available in this subscription"
-$StorageAccount_ResponseSorted = $StorageAccount_ResponseSorted | Where-Object { $_.locations.Count -gt 0 }
+$StorageAccount_Response = $StorageAccount_Response | Where-Object { $_.locations.Count -gt 0 }
 
 # Count distinct storage account locations, excluding empty strings
-$TotalStorageLocations = ($StorageAccount_ResponseSorted | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
+$TotalStorageLocations = ($StorageAccount_Response | ForEach-Object { $_.locations[0] } | Where-Object { $_ -ne "" } | Sort-Object | Get-Unique).Count
 $CurrentLocationIndex = 0
 
 Write-Output "  Adding storage account SKUs for consolidated regions"
 $LastLocation = $null
-$StorageAccount_ResponseSorted | ForEach-Object {
+$StorageAccount_Response | ForEach-Object {
     $CurrentLocation = $_.locations[0]
     if ($CurrentLocation -ne $LastLocation) {
         $CurrentLocationIndex++
@@ -262,12 +262,12 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
     # Rename 'AzureRegions' to 'ImplementedRegions'
     if ($obj.PSObject.Properties["AzureRegions"]) {
         $newRegions = @()
-        foreach ($region in $obj.AzureRegions) {
-            if ($LocationMap.ContainsKey($region)) {
-                $newRegions += $LocationMap[$region]
+        foreach ($Region in $obj.AzureRegions) {
+            if ($LocationMap.ContainsKey($Region)) {
+                $newRegions += $LocationMap[$Region]
             }
             else {
-                $newRegions += $region
+                $newRegions += $Region
             }
         }
         $obj | Add-Member -Force -MemberType NoteProperty -Name ImplementedRegions -Value $newRegions
@@ -288,14 +288,13 @@ $Resources_Implementation = $Resources_Implementation | ForEach-Object {
 
 # General availability mapping (without SKUs): Start
 Write-Output "Working on general availability mapping without SKU consideration"
-$TotalResourceTypes = $Resources_Implementation.Count
 $CurrentResourceTypeIndex = 0
 
 # Map current implementation data to general Azure region availabilities
 Write-Output "  Adding Azure regions with resource availability information"
 foreach ($resource in $Resources_Implementation) {
     $CurrentResourceTypeIndex++
-    Write-Output ("    Processing resource type {0:D03} of {1:D03}: {2}" -f $CurrentResourceTypeIndex, $TotalResourceTypes, $resource.ResourceType)
+    Write-Output ("    Processing resource type {0:D03} of {1:D03}: {2}" -f $CurrentResourceTypeIndex, $Resources_Implementation.Count, $resource.ResourceType)
     # Split the resource type string into namespace and type (keeping everything after the first "/" as the type)
     $splitParts = $resource.ResourceType -split "/", 2
     if ($splitParts.Length -eq 2) {
@@ -309,10 +308,10 @@ foreach ($resource in $Resources_Implementation) {
             if ($resourceTypeObject) {
                 # Create a mapped regions array directly using $LocationResponse.value
                 $MappedRegions = @()
-                foreach ($region in $LocationResponse.value) {
-                    $availability = if ($resourceTypeObject.Locations -contains $region.displayName) { "true" } else { "false" }
+                foreach ($Region in $LocationResponse.value) {
+                    $availability = if ($resourceTypeObject.Locations -contains $Region.displayName) { "true" } else { "false" }
                     $MappedRegions += New-Object -TypeName PSObject -Property @{
-                        region    = $region.displayName
+                        region    = $Region.displayName
                         available = $availability
                     }
                 }
@@ -337,10 +336,10 @@ Write-Output "Working on availability SKU mapping"
 Write-Output "  Adding implemented SKUs to Azure regions with general availability"
 foreach ($resource in $Resources_Implementation) {
     if ($resource.ImplementedSkus) {
-        foreach ($region in $resource.AllRegions) {
-            if ($region.available -eq "true") {
+        foreach ($Region in $resource.AllRegions) {
+            if ($Region.available -eq "true") {
                 # Add the SKUs property containing the array from the current resource object.
-                $region | Add-Member -MemberType NoteProperty -Name SKUs -Value $resource.ImplementedSkus -Force
+                $Region | Add-Member -MemberType NoteProperty -Name SKUs -Value $resource.ImplementedSkus -Force
             }
         }
     }

@@ -84,7 +84,7 @@ Function Get-SingleData {
         $response = Search-AzGraph -Query $query -First 1000 -SkipToken $response.SkipToken
         $resultSet += $response
     }
-    $Global:baseresult = $resultSet
+    $Script:baseresult = $resultSet
 }
 
 Function Get-MultiLoop {
@@ -93,14 +93,13 @@ Function Get-MultiLoop {
     )
     # Open workload file and get subscription IDs
     $workloads = Get-Content -Path $workloadFile -raw | ConvertFrom-Json
-    $subscriptionIds = $workloads.Subscriptions
     $tempArray = @()
     foreach ($subscription in $workloads.subscriptions) {
         $basequery = "resources | where subscriptionId == '$subscription'"
         Get-SingleData -query $basequery
-        $tempArray += $Global:baseresult
+        $tempArray += $Script:baseresult
     }
-    $Global:baseresult = $tempArray
+    $Script:baseresult = $tempArray
 }
 
 Function Get-Property {

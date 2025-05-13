@@ -122,19 +122,20 @@ Function Get-Property {
     Set-Variable -Name $outputVarName -Value $object -Scope Global
 }
 
-Function run-CmdLine {
+Function Invoke-CmdLine {
     param(
         [Parameter(Mandatory = $true)] [string] $cmdLine,
         [Parameter(Mandatory = $true)] [string] $outputVarName
     )
     #Reset variable to avoid conflicts
     Set-Variable -Name $outputVarName -Value $null -Scope Global
-    $cmdResult = Invoke-Expression -Command $cmdLine
+    $scriptBlock = [scriptblock]::Create($cmdLine)
+    $cmdResult = & $scriptBlock
     # if result is a number linmit to 2 decimal places
     if ($cmdResult -is [int] -or $cmdResult -is [double]) {
         $cmdResult = "{0:N2}" -f $cmdResult
     }
-    Set-Variable -Name $outputVarName -Value $cmdResult -Scope Global
+    Set-Variable -Name $outputVarName -Value $cmdResult -Scope Script
 }
 
 function Get-rType {
@@ -154,7 +155,7 @@ function Get-rType {
     elseif ($propertyExists -eq $false) {
         #"Property for $outputVarName for $resourceType not indicated in $filePath, try to get cmdLine"
         $cmdLine = $json | Where-Object { $psItem.resourceType -eq $resourceType } | Select-Object -ExpandProperty cmdLine
-        run-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName
+        Invoke-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName
     }
     else {
         #"Neither property nor cmdline for $outputVarName for $resourceType is indicated in $filepath"

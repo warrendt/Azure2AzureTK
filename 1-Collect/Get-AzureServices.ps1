@@ -2,12 +2,12 @@
     Assess Azure resources by querying Resource Graph and extracting specific properties or metadata.
 
 .DESCRIPTION
-    This script queries Azure Resource Graph to retrieve information about resources within a specified scope 
-    (single subscription, resource group, or multiple subscriptions). It processes the results to extract 
+    This script queries Azure Resource Graph to retrieve information about resources within a specified scope
+    (single subscription, resource group, or multiple subscriptions). It processes the results to extract
     additional properties or metadata based on predefined configurations and outputs the results to a JSON file.
 
 .PARAMETER scopeType
-    Specifies the scope type to run the query against. Valid values are 'singleSubscription', 'resourceGroup', 
+    Specifies the scope type to run the query against. Valid values are 'singleSubscription', 'resourceGroup',
     or 'multiSubscription'. Default is 'singleSubscription'.
 
 .PARAMETER subscriptionId
@@ -26,7 +26,7 @@
     The name of the output file where the summary will be exported. Default is "summary.json".
 
 .FUNCTION Get-SingleData
-    Queries Azure Resource Graph for resources within a single subscription and retrieves all results, 
+    Queries Azure Resource Graph for resources within a single subscription and retrieves all results,
     handling pagination if necessary.
 
 .FUNCTION Get-Property
@@ -155,7 +155,7 @@ function Get-rType {
     elseif ($propertyExists -eq $false) {
         #"Property for $outputVarName for $resourceType not indicated in $filePath, try to get cmdLine"
         $cmdLine = $json | Where-Object { $psItem.resourceType -eq $resourceType } | Select-Object -ExpandProperty cmdLine
-        run-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName  
+        run-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName
     }
     else {
         #"Neither property nor cmdline for $outputVarName for $resourceType is indicated in $filepath"
@@ -241,7 +241,7 @@ $baseResult | ForEach-Object {
 $outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $fullOutputFile
 $groupedResources = $outputArray | Group-Object -Property ResourceType
 $summary = @()
-foreach ($group in $groupedResources) {                     
+foreach ($group in $groupedResources) {
     $resourceType = $group.Name
     $uniqueLocations = $group.Group | Select-Object -Property ResourceLocation -Unique | Select-Object -ExpandProperty ResourceLocation
     if ($uniqueLocations -isnot [System.Array]) {

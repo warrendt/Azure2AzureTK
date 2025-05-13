@@ -19,8 +19,11 @@
 .PARAMETER workloadFile
     The path to a JSON file containing subscription details. Used for multi-subscription scenarios.
 
-.PARAMETER outputFile
-    The name of the output file where the results will be exported. Default is "test.json".
+.PARAMETER fullOutputFile
+    The name of the output file where the full results will be exported. Default is "resources.json".
+
+.PARAMETER summaryOutputFile
+    The name of the output file where the summary will be exported. Default is "summary.json".
 
 .FUNCTION Get-SingleData
     Queries Azure Resource Graph for resources within a single subscription and retrieves all results, 
@@ -47,7 +50,7 @@
     Runs the script for a specific resource group within the current subscription and outputs the results to the default file.
 
 .EXAMPLE
-    PS C:\> .\assess_resources.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -outputFile "output.json"
+    PS C:\> .\assess_resources.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -fullOutputFile "output.json"
     Runs the script for multiple subscriptions defined in the workload file and outputs the results to "output.json".
 
 
@@ -65,7 +68,8 @@ param(
     [Parameter(Mandatory = $false)] [string] $subscriptionId, # Subscription ID to run the query against
     [Parameter(Mandatory = $false)] [string] $resourceGroupName, # resource group to run the query against
     [Parameter(Mandatory = $false)] [string] $workloadFile, # JSON file containing subscriptions
-    [Parameter(Mandatory = $false)] [string] $outputFile = "resources.json" # Excel file to export the results to
+    [Parameter(Mandatory = $false)] [string] $fullOutputFile = "resources.json", # Json file to export the results to
+    [Parameter(Mandatory = $false)] [string] $summaryOutputFile = "summary.json" # Json file to export the results to
 )
 
 Function Get-SingleData {
@@ -175,6 +179,8 @@ Function Get-Method {
 }
 
 # Main script starts here
+# Turn off breaking change warnings for Azure PowerShell, for Get-AzMetric CmdLet
+Set-Item -Path Env:\SuppressAzurePowerShellBreakingChangeWarnings -Value $true
 $outputArray = @()
 
 Switch ($scopeType) {
@@ -232,7 +238,7 @@ $baseResult | ForEach-Object {
     }
     $outputArray += $outObject
 }
-$outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $outputFile
+$outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $fullOutputFile
 $groupedResources = $outputArray | Group-Object -Property ResourceType
 $summary = @()
 foreach ($group in $groupedResources) {                     
@@ -250,4 +256,4 @@ foreach ($group in $groupedResources) {
         $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = @("N/A"); AzureRegions = $uniqueLocations }
     }
 }
-$summary | ConvertTo-Json -Depth 100 | Out-File -FilePath "summary.json"
+$summary | ConvertTo-Json -Depth 100 | Out-File -FilePath $summaryOutputFile

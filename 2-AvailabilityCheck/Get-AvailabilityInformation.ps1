@@ -371,7 +371,7 @@ foreach ($resource in $Resources_Implementation) {
         # Filter regions to those available and having a SKUs property
         $Location_ValidRegions = $resource.AllRegions | Where-Object { $_.available -eq "true" -and $_.SKUs }
         $Location_TotalLocations = $Location_ValidRegions.Count
-        $Location_CurrentLocationIndex = 0        
+        $Location_CurrentLocationIndex = 0
         foreach ($region in $Location_ValidRegions) {
             $Location_CurrentLocationIndex++
             Write-Output ("    Processing region {0:D03} of {1:D03}: {2}" -f $Location_CurrentLocationIndex, $Location_TotalLocations, $region.region)
@@ -389,7 +389,7 @@ foreach ($resource in $Resources_Implementation) {
                         $isAvailable = "true"
                         break  # Found a matching SKU; stop looping
                     }
-                }    
+                }
                 # Create a new object for the SKU
                 $newObj = New-Object PSObject -Property @{
                     name      = $skuName
@@ -407,14 +407,14 @@ foreach ($resource in $Resources_Implementation) {
 # Check is against storage account SKUs because because compute disks will be reported back in storage account SKU format
 Write-Output "  Processing SKUs for resource type: microsoft.compute/disks"
 foreach ($resource in $Resources_Implementation) {
-    if ($resource.ResourceType -ieq "microsoft.compute/disks") {        
+    if ($resource.ResourceType -ieq "microsoft.compute/disks") {
         # Filter regions to those available and having a SKUs property
         $Location_ValidRegions = $resource.AllRegions | Where-Object { $_.available -eq "true" -and $_.SKUs }
         $Location_TotalLocations = $Location_ValidRegions.Count
-        $Location_CurrentLocationIndex = 0        
+        $Location_CurrentLocationIndex = 0
         foreach ($region in $Location_ValidRegions) {
             $Location_CurrentLocationIndex++
-            Write-Output ("    Processing region {0:D3} of {1:D3}: {2}" -f $Location_CurrentLocationIndex, $Location_TotalLocations, $region.region)            
+            Write-Output ("    Processing region {0:D3} of {1:D3}: {2}" -f $Location_CurrentLocationIndex, $Location_TotalLocations, $region.region)
             $newSKUs = @()
             foreach ($sku in $region.SKUs) {
                 $isAvailable = "false"

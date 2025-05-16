@@ -1,3 +1,5 @@
+# Current implementation to Azure availabilities mapping scripts
+
 ## Availability check script
 
 This script evaluates the availability of Azure services, resources, and SKUs across different regions. When combined with the output from the 1-Collect script, it provides a comprehensive overview of potential migration destinations, identifying feasible regions and the reasons for their suitability or limitations, such as availability constraints per region.

@@ -62,4 +62,4 @@ if ($ExportExcel) {
     $formattedData | Export-Csv -Path "$OutputPath.csv" -NoTypeInformation
 }
 
-Write-Host "Report exported to: $OutputPath"
+Write-Output "Report exported to: $OutputPath"

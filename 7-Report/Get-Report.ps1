@@ -18,9 +18,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [string]$InputPath,
-
-    [switch]$ExportExcel
+    [string]$InputPath
 )
 
 # Import data

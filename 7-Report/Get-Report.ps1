@@ -20,18 +20,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$InputPath,
 
-    [Parameter(Mandatory = $true)]
-    [string]$OutputPath,
-
     [switch]$ExportExcel
 )
 
 # Import data
 try {
     if ($InputPath.EndsWith(".json")) {
-        $data = Get-Content $InputPath | ConvertFrom-Json
+        $rawdata = Get-Content $InputPath | ConvertFrom-Json
     } elseif ($InputPath.EndsWith(".csv")) {
-        $data = Import-Csv $InputPath
+        $rawdata = Import-Csv $InputPath
     } else {
         throw "Unsupported input format. Please provide a JSON or CSV file."
     }
@@ -40,26 +37,35 @@ try {
     exit 1
 }
 
-# Format data for export (include SKU if it exists)
-$formattedData = $data | Select-Object `
-    ResourceName, `
-    ResourceType, `
-    Sku, `
-    OriginRegion, `
-    TargetRegion, `
-    IsAvailableInTargetRegion
+# Initialize an array to collect output
+$reportData = @()
 
-# Export to Excel or CSV
-if ($ExportExcel) {
-    if (-not (Get-Module -ListAvailable -Name ImportExcel)) {
-        Write-Warning "ImportExcel module is not installed. Falling back to CSV."
-        $formattedData | Export-Csv -Path "$OutputPath.csv" -NoTypeInformation
-    } else {
-        Import-Module ImportExcel
-        $formattedData | Export-Excel -Path "$OutputPath.xlsx" -AutoSize -TableName "AvailabilityReport"
+# Process each item in the JSON
+foreach ($item in $rawdata) {
+    $reportItem = [PSCustomObject]@{
+        ResourceType       = $item.ResourceType
+        ResourceCount      = $item.ResourceCount
+        ImplementedRegions = ($item.ImplementedRegions -join ", ")
+        SelectedRegion     = $item.SelectedRegion.region
+        IsAvailable        = $item.SelectedRegion.available
     }
-} else {
-    $formattedData | Export-Csv -Path "$OutputPath.csv" -NoTypeInformation
+
+    $reportData += $reportItem
 }
 
-Write-Output "Report exported to: $OutputPath"
+# Get current timestamp in format yyyyMMdd_HHmmss
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+
+# Define output file name with timestamp
+$csvFileName = "Availability_Report_$timestamp.csv"
+$xlsxFileName = "Availability_Report_$timestamp.xlsx"
+
+# Export to CSV
+$reportData | Export-Csv -Path $csvFileName -NoTypeInformation
+
+# Export to Excel (requires ImportExcel module)
+if (Get-Module -ListAvailable -Name ImportExcel) {
+    $reportData | Export-Excel -Path $xlsxFileName -AutoSize
+} else {
+    Write-Warning "Excel export skipped. 'ImportExcel' module not found. Install with: Install-Module -Name ImportExcel"
+}

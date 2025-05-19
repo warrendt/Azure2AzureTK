@@ -40,10 +40,19 @@ $reportData = @()
 
 # Process each item in the JSON
 foreach ($item in $rawdata) {
+    # Determine ImplementedSkus value based on ResourceType
+    $implementedSkus = $null
+    if ($item.ResourceType -eq "microsoft.compute/virtualmachines") {
+        $implementedSkus = ($item.ImplementedSkus.vmSize -join ", ")
+    } elseif ($item.ResourceType -eq "microsoft.compute/disks") {
+        $implementedSkus = ($item.ImplementedSkus.name -join ", ")
+    }
+
     $reportItem = [PSCustomObject]@{
         ResourceType       = $item.ResourceType
         ResourceCount      = $item.ResourceCount
         ImplementedRegions = ($item.ImplementedRegions -join ", ")
+        ImplementedSkus    = $implementedSkus
         SelectedRegion     = $item.SelectedRegion.region
         IsAvailable        = $item.SelectedRegion.available
     }
@@ -63,7 +72,7 @@ $reportData | Export-Csv -Path $csvFileName -NoTypeInformation
 
 # Export to Excel (requires ImportExcel module)
 if (Get-Module -ListAvailable -Name ImportExcel) {
-    $reportData | Export-Excel -Path $xlsxFileName -AutoSize
+    $reportData | Export-Excel -Path $xlsxFileName -WorksheetName "General" -AutoSize
 } else {
     Write-Warning "Excel export skipped. 'ImportExcel' module not found. Install with: Install-Module -Name ImportExcel"
 }

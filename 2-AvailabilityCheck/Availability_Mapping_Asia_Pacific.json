@@ -1,0 +1,368 @@
+[
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.compute/disks",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "PremiumV2_LRS",
+        "tier": "Premium"
+      },
+      {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "true",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.compute/sshpublickeys",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.compute/virtualmachines",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "vmSize": "Standard_B2als_v2"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.datafactory/factories",
+    "ImplementedRegions": [
+      "West Europe",
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.dataprotection/backupvaults",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 5,
+    "ResourceType": "microsoft.eventgrid/systemtopics",
+    "ImplementedRegions": [
+      "West Europe",
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.insights/actiongroups",
+    "ImplementedRegions": [
+      "Global"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.insights/metricalerts",
+    "ImplementedRegions": [
+      "Global"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.keyvault/vaults",
+    "ImplementedRegions": [
+      "East US",
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "premium",
+        "family": "A"
+      },
+      {
+        "name": "standard",
+        "family": "A"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.managedidentity/userassignedidentities",
+    "ImplementedRegions": [
+      "North Europe"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.migrate/movecollections",
+    "ImplementedRegions": [
+      "France Central",
+      "Japan East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/applicationgateways",
+    "ImplementedRegions": [
+      "East US"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "WAF_v2",
+        "tier": "WAF_v2",
+        "family": "Generation_1"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/applicationgatewaywebapplicationfirewallpolicies",
+    "ImplementedRegions": [
+      "East US"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/networkinterfaces",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.network/networksecuritygroups",
+    "ImplementedRegions": [
+      "Norway East",
+      "East US"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 8,
+    "ResourceType": "microsoft.network/networkwatchers",
+    "ImplementedRegions": [
+      "East US",
+      "East US 2",
+      "Germany West Central",
+      "Mexico Central",
+      "Norway East",
+      "Sweden Central",
+      "UK South",
+      "West Europe"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/publicipaddresses",
+    "ImplementedRegions": [
+      "East US"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "Standard",
+        "tier": "Regional"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.network/virtualnetworks",
+    "ImplementedRegions": [
+      "Norway East",
+      "East US"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.operationalinsights/workspaces",
+    "ImplementedRegions": [
+      "Mexico Central",
+      "West Europe",
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2025-04-04T12:40:45.1091313Z"
+      },
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2024-04-22T09:43:06.9218006Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2023-06-07T09:38:41.1060716Z"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.operationsmanagement/solutions",
+    "ImplementedRegions": [
+      "West Europe"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.recoveryservices/vaults",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "RS0",
+        "tier": "Standard"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.sql/servers",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.sql/servers/databases",
+    "ImplementedRegions": [
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "GP_S_Gen5",
+        "tier": "GeneralPurpose",
+        "capacity": 1,
+        "family": "Gen5"
+      },
+      {
+        "name": "System",
+        "tier": "System",
+        "capacity": 0
+      },
+      {
+        "name": "Basic",
+        "tier": "Basic",
+        "capacity": 5
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.storage/storageaccounts",
+    "ImplementedRegions": [
+      "West Europe",
+      "Norway East"
+    ],
+    "ImplementedSkus": [
+      {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      {
+        "name": "Standard_ZRS",
+        "tier": "Standard"
+      }
+    ],
+    "SelectedRegion": {
+      "available": "false",
+      "region": "Asia Pacific"
+    }
+  }
+]

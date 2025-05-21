@@ -191,17 +191,17 @@ if ($SQL_ManagedInstance_Provider) {
         Write-Output "  Adding SQL managed instance SKUs for consolidated regions"
         $SQL_ManagedInstance_Regions = $SQL_ManagedInstance_ResourceType.Locations
         $TotalSQLManagedInstanceRegions = $SQL_ManagedInstance_Regions.Count
-        $CurrentSQLManagedInstanceRegionIndex = 0        
+        $CurrentSQLManagedInstanceRegionIndex = 0
         foreach ($region in $SQL_ManagedInstance_Regions) {
             $CurrentSQLManagedInstanceRegionIndex++
             # Convert the display region into a region code for the URL
             $regionCode = ($region -replace '\s','').ToLower()
-            Write-Output ("    Retrieving SQL managed instance SKU for region {0:D03} of {1:D03}: {2}" -f $CurrentSQLManagedInstanceRegionIndex, $TotalSQLManagedInstanceRegions, $region)            
+            Write-Output ("    Retrieving SQL managed instance SKU for region {0:D03} of {1:D03}: {2}" -f $CurrentSQLManagedInstanceRegionIndex, $TotalSQLManagedInstanceRegions, $region)
             $SQL_ManagedInstance_Uri = "$REST_BaseUri/$REST_SubscriptionId/providers/Microsoft.Sql/locations/$regionCode/capabilities?api-version=2021-02-01-preview" 2>$null
             try {
                 $SQL_ManagedInstance_Response = Invoke-RestMethod -Uri $SQL_ManagedInstance_Uri -Headers $REST_Headers -Method Get
                 # Select only the supportedManagedInstanceVersions property from the response
-                $FilteredCapabilities = $SQL_ManagedInstance_Response | Select-Object -Property supportedManagedInstanceVersions                
+                $FilteredCapabilities = $SQL_ManagedInstance_Response | Select-Object -Property supportedManagedInstanceVersions
                 # Rebuild supportedManagedInstanceVersions
                 if ($FilteredCapabilities -and $FilteredCapabilities.supportedManagedInstanceVersions) {
                     $FilteredCapabilities.supportedManagedInstanceVersions = $FilteredCapabilities.supportedManagedInstanceVersions | ForEach-Object {
@@ -226,7 +226,7 @@ if ($SQL_ManagedInstance_Provider) {
                             skus = $uniqueSkus
                         }
                     }
-                }                
+                }
                 # Flatten the output
                 if ($FilteredCapabilities.supportedManagedInstanceVersions.Count -gt 0) {
                     $sv = $FilteredCapabilities.supportedManagedInstanceVersions[0]
@@ -234,7 +234,6 @@ if ($SQL_ManagedInstance_Provider) {
                 else {
                     $sv = [PSCustomObject]@{ skus = @() }
                 }
-                
                 # Append the flattened object with region context
                 $SQL_ManagedInstance_SKU += [PSCustomObject]@{
                     Region     = $region
@@ -321,14 +320,14 @@ if ($SQL_Server_Database_Provider) {
                             skus = $uniqueSkus
                         }
                     }
-                }                
+                }
                 # Flatten the output
                 if ($FilteredCapabilities.supportedServerVersions.Count -gt 0) {
                     $sv = $FilteredCapabilities.supportedServerVersions[0]
                 }
                 else {
                     $sv = [PSCustomObject]@{ skus = @() }
-                }                
+                }
                 # Append the flattened object with region context
                 $SQL_Server_Database_SKU += [PSCustomObject]@{
                     Region     = $region

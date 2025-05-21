@@ -11,11 +11,8 @@
 *.sln.docstates
 1-Collect/resources.json
 1-Collect/summary.json
-2-AvailabilityCheck/Availability_Mapping.json
-2-AvailabilityCheck/Azure_Providers.json
-2-AvailabilityCheck/Azure_Regions.json
-2-AvailabilityCheck/Azure_SKUs_StorageAccount.json
-2-AvailabilityCheck/Azure_SKUs_VM.json
+2-AvailabilityCheck/Availability_*.json
+2-AvailabilityCheck/Azure_*.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

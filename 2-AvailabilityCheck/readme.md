@@ -4,6 +4,15 @@
 
 This script evaluates the availability of Azure services, resources, and SKUs across different regions. When combined with the output from the 1-Collect script, it provides a comprehensive overview of potential migration destinations, identifying feasible regions and the reasons for their suitability or limitations, such as availability constraints per region.
 
+Currently, this script associates every resource with its regional availability. Additionally, it maps the following SKUs to the regions where they are supported:
+* microsoft.compute/virtualmachines
+* microsoft.compute/disks
+* microsoft.storage/storageaccounts
+
+For the following SKUs, regional availabilities will be retrieved and stored in dedicated files; however, mapping these against migration targets has not been implemented:
+* Microsoft.Sql/managedInstances
+* Microsoft.Sql/servers/databases
+
 To use the script do the following from a powershell command line:
 1. Log on to Azure using `Connect-AzAccount` and select the appropriate subscription using `Select-AzSubscription`.
 2. Run `.\Get-AzureServices.ps1` from `1-Collect` folder.

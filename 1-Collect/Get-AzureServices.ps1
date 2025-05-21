@@ -2,12 +2,12 @@
     Assess Azure resources by querying Resource Graph and extracting specific properties or metadata.
 
 .DESCRIPTION
-    This script queries Azure Resource Graph to retrieve information about resources within a specified scope 
-    (single subscription, resource group, or multiple subscriptions). It processes the results to extract 
+    This script queries Azure Resource Graph to retrieve information about resources within a specified scope
+    (single subscription, resource group, or multiple subscriptions). It processes the results to extract
     additional properties or metadata based on predefined configurations and outputs the results to a JSON file.
 
 .PARAMETER scopeType
-    Specifies the scope type to run the query against. Valid values are 'singleSubscription', 'resourceGroup', 
+    Specifies the scope type to run the query against. Valid values are 'singleSubscription', 'resourceGroup',
     or 'multiSubscription'. Default is 'singleSubscription'.
 
 .PARAMETER subscriptionId
@@ -19,11 +19,14 @@
 .PARAMETER workloadFile
     The path to a JSON file containing subscription details. Used for multi-subscription scenarios.
 
-.PARAMETER outputFile
-    The name of the output file where the results will be exported. Default is "test.json".
+.PARAMETER fullOutputFile
+    The name of the output file where the full results will be exported. Default is "resources.json".
+
+.PARAMETER summaryOutputFile
+    The name of the output file where the summary will be exported. Default is "summary.json".
 
 .FUNCTION Get-SingleData
-    Queries Azure Resource Graph for resources within a single subscription and retrieves all results, 
+    Queries Azure Resource Graph for resources within a single subscription and retrieves all results,
     handling pagination if necessary.
 
 .FUNCTION Get-Property
@@ -47,7 +50,7 @@
     Runs the script for a specific resource group within the current subscription and outputs the results to the default file.
 
 .EXAMPLE
-    PS C:\> .\assess_resources.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -outputFile "output.json"
+    PS C:\> .\assess_resources.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -fullOutputFile "output.json"
     Runs the script for multiple subscriptions defined in the workload file and outputs the results to "output.json".
 
 
@@ -65,7 +68,8 @@ param(
     [Parameter(Mandatory = $false)] [string] $subscriptionId, # Subscription ID to run the query against
     [Parameter(Mandatory = $false)] [string] $resourceGroupName, # resource group to run the query against
     [Parameter(Mandatory = $false)] [string] $workloadFile, # JSON file containing subscriptions
-    [Parameter(Mandatory = $false)] [string] $outputFile = "resources.json" # Excel file to export the results to
+    [Parameter(Mandatory = $false)] [string] $fullOutputFile = "resources.json", # Json file to export the results to
+    [Parameter(Mandatory = $false)] [string] $summaryOutputFile = "summary.json" # Json file to export the results to
 )
 
 Function Get-SingleData {
@@ -80,7 +84,7 @@ Function Get-SingleData {
         $response = Search-AzGraph -Query $query -First 1000 -SkipToken $response.SkipToken
         $resultSet += $response
     }
-    $Global:baseresult = $resultSet
+    $Script:baseresult = $resultSet
 }
 
 Function Get-MultiLoop {
@@ -89,14 +93,13 @@ Function Get-MultiLoop {
     )
     # Open workload file and get subscription IDs
     $workloads = Get-Content -Path $workloadFile -raw | ConvertFrom-Json
-    $subscriptionIds = $workloads.Subscriptions
     $tempArray = @()
     foreach ($subscription in $workloads.subscriptions) {
         $basequery = "resources | where subscriptionId == '$subscription'"
         Get-SingleData -query $basequery
-        $tempArray += $Global:baseresult
+        $tempArray += $Script:baseresult
     }
-    $Global:baseresult = $tempArray
+    $Script:baseresult = $tempArray
 }
 
 Function Get-Property {
@@ -119,19 +122,20 @@ Function Get-Property {
     Set-Variable -Name $outputVarName -Value $object -Scope Global
 }
 
-Function run-CmdLine {
+Function Invoke-CmdLine {
     param(
         [Parameter(Mandatory = $true)] [string] $cmdLine,
         [Parameter(Mandatory = $true)] [string] $outputVarName
     )
     #Reset variable to avoid conflicts
     Set-Variable -Name $outputVarName -Value $null -Scope Global
-    $cmdResult = Invoke-Expression -Command $cmdLine
+    $scriptBlock = [scriptblock]::Create($cmdLine)
+    $cmdResult = & $scriptBlock
     # if result is a number linmit to 2 decimal places
     if ($cmdResult -is [int] -or $cmdResult -is [double]) {
         $cmdResult = "{0:N2}" -f $cmdResult
     }
-    Set-Variable -Name $outputVarName -Value $cmdResult -Scope Global
+    Set-Variable -Name $outputVarName -Value $cmdResult -Scope Script
 }
 
 function Get-rType {
@@ -151,7 +155,7 @@ function Get-rType {
     elseif ($propertyExists -eq $false) {
         #"Property for $outputVarName for $resourceType not indicated in $filePath, try to get cmdLine"
         $cmdLine = $json | Where-Object { $psItem.resourceType -eq $resourceType } | Select-Object -ExpandProperty cmdLine
-        run-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName  
+        Invoke-CmdLine -cmdLine $cmdLine -outputVarName $outputVarName
     }
     else {
         #"Neither property nor cmdline for $outputVarName for $resourceType is indicated in $filepath"
@@ -175,6 +179,8 @@ Function Get-Method {
 }
 
 # Main script starts here
+# Turn off breaking change warnings for Azure PowerShell, for Get-AzMetric CmdLet
+Set-Item -Path Env:\SuppressAzurePowerShellBreakingChangeWarnings -Value $true
 $outputArray = @()
 
 Switch ($scopeType) {
@@ -232,10 +238,10 @@ $baseResult | ForEach-Object {
     }
     $outputArray += $outObject
 }
-$outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $outputFile
+$outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $fullOutputFile
 $groupedResources = $outputArray | Group-Object -Property ResourceType
 $summary = @()
-foreach ($group in $groupedResources) {                     
+foreach ($group in $groupedResources) {
     $resourceType = $group.Name
     $uniqueLocations = $group.Group | Select-Object -Property ResourceLocation -Unique | Select-Object -ExpandProperty ResourceLocation
     if ($uniqueLocations -isnot [System.Array]) {
@@ -250,4 +256,4 @@ foreach ($group in $groupedResources) {
         $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = @("N/A"); AzureRegions = $uniqueLocations }
     }
 }
-$summary | ConvertTo-Json -Depth 100 | Out-File -FilePath "summary.json"
+$summary | ConvertTo-Json -Depth 100 | Out-File -FilePath $summaryOutputFile

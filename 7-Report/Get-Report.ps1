@@ -40,12 +40,34 @@ $reportData = @()
 
 # Process each item in the JSON
 foreach ($item in $rawdata) {
-    # Determine ImplementedSkus value based on ResourceType
-    $implementedSkus = $null
-    if ($item.ResourceType -eq "microsoft.compute/virtualmachines") {
-        $implementedSkus = ($item.ImplementedSkus.vmSize -join ", ")
-    } elseif ($item.ResourceType -eq "microsoft.compute/disks") {
-        $implementedSkus = ($item.ImplementedSkus.name -join ", ")
+    # if implementedSkus is exists and is not null
+    if ($item.ImplementedSkus -and $item.ImplementedSkus.Count -gt 0) {
+        $implementedSkus = ($item.ImplementedSkus | ForEach-Object {
+            # Return the SKU name based on the resource type
+            if ($item.ResourceType -eq "microsoft.compute/disks") {
+                $_.name
+            } elseif ($item.ResourceType -eq "microsoft.compute/virtualmachines") {
+                $_.vmSize
+            } elseif ($item.ResourceType -eq "microsoft.keyvault/vaults") {
+                $_.name + " (Family: " + $_.family + ")"
+            } elseif ($item.ResourceType -eq "microsoft.network/applicationgateways") {
+                $_.name + " (Family: " + $_.family + ")"
+            } elseif ($item.ResourceType -eq "microsoft.network/publicipaddresses") {
+                $_.name + " (" + $_.tier + ")"
+            } elseif ($item.ResourceType -eq "microsoft.operationalinsights/workspaces") {
+                $_.name + " (Last Sku Update: " + $_.lastSkuUpdate + ")"
+            } elseif ($item.ResourceType -eq "microsoft.recoveryservices/vaults") {
+                $_.name + " (" + $_.tier + ")"
+            } elseif ($item.ResourceType -eq "microsoft.sql/servers/databases") {
+                $_.name + " (Capacity: " + $_.capacity + ")"
+            } elseif ($item.ResourceType -eq "microsoft.storage/storageaccounts") {
+                $_.name
+            } else {
+                # No action for other resource types
+            }
+        }) -join ", "
+    } else {
+        $implementedSkus = "N/A"
     }
 
     $reportItem = [PSCustomObject]@{
@@ -60,19 +82,54 @@ foreach ($item in $rawdata) {
     $reportData += $reportItem
 }
 
-# Get current timestamp in format yyyyMMdd_HHmmss
+# Define output file name with current timestamp (yyyyMMdd_HHmmss)
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-
-# Define output file name with timestamp
 $csvFileName = "Availability_Report_$timestamp.csv"
 $xlsxFileName = "Availability_Report_$timestamp.xlsx"
+
+$excelParams = @{
+    Path           = $xlsxFileName
+    WorksheetName  = "General"
+    AutoSize       = $true
+    TableStyle     = 'None'
+    PassThru       = $true
+}
 
 # Export to CSV
 $reportData | Export-Csv -Path $csvFileName -NoTypeInformation
 
-# Export to Excel (requires ImportExcel module)
+# Make the Excel first row (header) with blue background and white text
+$excelParams = @{
+    Path           = $xlsxFileName
+    WorksheetName  = "General"
+    AutoSize       = $true
+    TableStyle     = 'None'
+    PassThru       = $true
+}
+
 if (Get-Module -ListAvailable -Name ImportExcel) {
-    $reportData | Export-Excel -Path $xlsxFileName -WorksheetName "General" -AutoSize
+    $excelPkg = $reportData | Export-Excel @excelParams
+    $ws = $excelPkg.Workbook.Worksheets["General"]
+    if ($reportData -and $reportData.Count -gt 0 -and $reportData[0]) {
+        $lastColLetter = [OfficeOpenXml.ExcelCellAddress]::GetColumnLetter(6)
+        $headerRange = $ws.Cells["A1:$lastColLetter`1"]
+        $headerRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+        $headerRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::RoyalBlue)
+        $headerRange.Style.Font.Color.SetColor([System.Drawing.Color]::White)
+
+        # Set background color for IsAvailable column based on value
+        for ($row = 2; $row -le ($reportData.Count + 1); $row++) {
+            $cell = $ws.Cells["F$row"]
+            if ($cell.Value -eq $true) {
+            $cell.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+            $cell.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::LightGreen)
+            } elseif ($cell.Value -eq $false) {
+            $cell.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+            $cell.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::LightCoral)
+            }
+        }
+    }
+    $excelPkg.Save()
 } else {
     Write-Warning "Excel export skipped. 'ImportExcel' module not found. Install with: Install-Module -Name ImportExcel"
 }

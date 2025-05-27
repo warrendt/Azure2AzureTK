@@ -150,6 +150,8 @@ function Get-rType {
     if ($propertyExists) {
         #"Property for $outputVarName for $resourceType indicated in $filePath"
         $property = $json | Where-Object { $psItem.resourceType -eq $resourceType } | Select-Object -ExpandProperty property
+        # check if property is an array
+        
         Get-Property -object $object -property $property -outputVarName $outputVarName
     }
     elseif ($propertyExists -eq $false) {
@@ -167,11 +169,11 @@ function Get-rType {
 Function Get-Method {
     Param(
         [Parameter(Mandatory = $true)] [string] $resourceType,
-        [Parameter(Mandatory = $true)][ValidateSet('storageReplication', 'dataSize', "ipConfig", "Sku")] [string] $flagType,
+        [Parameter(Mandatory = $true)][ValidateSet('resiliencyProperties', 'dataSize', "ipConfig", "Sku")] [string] $flagType,
         [Parameter(Mandatory = $true)] [pscustomobject] $object
     )
     switch ($flagType) {
-        'storageReplication' { Get-rType -filePath .\modules\dataReplication.json -object $object -outputVarName "storageReplication" -resourceType $resourceType }
+        'resiliencyProperties' { Get-rType -filePath .\modules\dataReplication.json -object $object -outputVarName "resiliencyProperties" -resourceType $resourceType }
         'dataSize' { Get-rType -filePath .\modules\dataSize.json -object $object -outputVarName "dataSize" -resourceType $resourceType }
         'ipConfig' { Get-rType -filePath .\modules\ipConfig.json -object $object -outputVarName "ipAddress" -resourceType $resourceType }
         'Sku' { Get-rType -filePath .\modules\sku.json -object $object -outputVarName "sku" -resourceType $resourceType }
@@ -221,7 +223,7 @@ $baseResult | ForEach-Object {
     else {
         Get-Method -resourceType $resourceType -flagType "Sku" -object $PSItem
     }
-    Get-Method -resourceType $resourceType -flagType "storageReplication" -object $PSItem
+    Get-Method -resourceType $resourceType -flagType "resiliencyProperties" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "dataSize" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "ipConfig" -object $PSItem
     $outObject = [PSCustomObject] @{
@@ -232,7 +234,7 @@ $baseResult | ForEach-Object {
         ResourceID             = $resourceID
         ResourceSku            = $sku
         ResourceZones          = $resourceZones
-        storageReplication     = $storageReplication
+        resiliencyProperties   = $resiliencyProperties
         dataSizeGB             = $dataSize
         ipAddress              = $ipAddress
     }

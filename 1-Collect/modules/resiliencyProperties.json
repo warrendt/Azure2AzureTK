@@ -25,9 +25,13 @@
   },
   {
     "resourceType": "microsoft.sql/servers/databases",
-    "property": "properties.requestedBackupStorageRedundancy",
-    "description": "Get replication configuration for SQL database backup",
+    "property": [{"backupDataRedundancy":"properties.requestedBackupStorageRedundancy"}, {"zoneConfig": "properties.zoneRedundant"}],
+    "description": "Get resiliency properties for a SQL database",
     "isContainedInOriginalGraphOutput": true
+    // Include zonal databases, db replication as well as backup replication
+    // "zonal": true,
+    // "serviceDataReplication": true, //maybe include replication partners or regions
+    // "backupDatareplication": true //maybe include replication partners or regions
   }
 
   

@@ -164,7 +164,6 @@ function Get-rType {
             Set-Variable -Name $outputVarName -Value $outputVar -scope script
         }
         Else { Get-Property -object $object -property $property -outputVarName $outputVarName }
-        
     }
     elseif ($propertyExists -eq $false) {
         #"Property for $outputVarName for $resourceType not indicated in $filePath, try to get cmdLine"

@@ -1,0 +1,1168 @@
+[
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.alertsmanagement/actionrules",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 12,
+    "ResourceType": "microsoft.alertsmanagement/prometheusrulegroups",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 7,
+    "ResourceType": "microsoft.alertsmanagement/smartdetectoralertrules",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.automanage/configurationprofiles",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.automation/automationaccounts",
+    "ResourceSkus": {
+      "name": "Basic",
+      "capacity": null,
+      "family": null
+    },
+    "AzureRegions": [
+      "eastus2",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 8,
+    "ResourceType": "microsoft.automation/automationaccounts/configurations",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus2",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 14,
+    "ResourceType": "microsoft.automation/automationaccounts/runbooks",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus2",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.avs/privateclouds",
+    "ResourceSkus": {
+      "name": "av36"
+    },
+    "AzureRegions": [
+      "swedencentral"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ResourceSkus": {
+      "name": "S0"
+    },
+    "AzureRegions": [
+      "swedencentral"
+    ]
+  },
+  {
+    "ResourceCount": 7,
+    "ResourceType": "microsoft.compute/availabilitysets",
+    "ResourceSkus": {
+      "name": "Aligned"
+    },
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 28,
+    "ResourceType": "microsoft.compute/disks",
+    "ResourceSkus": [
+      {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      {
+        "name": "Premium_LRS",
+        "tier": "Premium"
+      }
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 16,
+    "ResourceType": "microsoft.compute/restorepointcollections",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.compute/snapshots",
+    "ResourceSkus": {
+      "name": "Standard_ZRS",
+      "tier": "Standard"
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.compute/sshpublickeys",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 16,
+    "ResourceType": "microsoft.compute/virtualmachines",
+    "ResourceSkus": [
+      {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      {
+        "name": "Premium_LRS",
+        "tier": "Premium"
+      },
+      {
+        "Length": 3
+      }
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 215,
+    "ResourceType": "microsoft.compute/virtualmachines/extensions",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 12,
+    "ResourceType": "microsoft.compute/virtualmachinescalesets",
+    "ResourceSkus": [
+      {
+        "name": "Standard_B2ms",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      {
+        "name": "Standard_B2ms",
+        "tier": "Standard",
+        "capacity": 0
+      },
+      {
+        "name": "Standard_D2s_v3",
+        "tier": "Standard",
+        "capacity": 0
+      },
+      {
+        "name": "Standard_D2s_v3",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      {
+        "name": "Standard_D2s_v3",
+        "tier": "Standard",
+        "capacity": 2
+      },
+      {
+        "name": "Standard_D2s_v3",
+        "tier": "Standard",
+        "capacity": 3
+      },
+      {
+        "name": "Standard_DS3_v2",
+        "tier": "Standard",
+        "capacity": 1
+      }
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.connectedvmwarevsphere/vcenters",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 53,
+    "ResourceType": "microsoft.containerinstance/containergroups",
+    "ResourceSkus": {
+      "Length": 8
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.containerregistry/registries",
+    "ResourceSkus": {
+      "name": "Standard",
+      "tier": "Standard"
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.containerservice/managedclusters",
+    "ResourceSkus": {
+      "name": "Base",
+      "tier": "Free"
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.dashboard/grafana",
+    "ResourceSkus": {
+      "name": "Standard"
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.datamigration/services",
+    "ResourceSkus": {
+      "name": "Premium_4vCores",
+      "tier": "Premium",
+      "size": "4 vCores"
+    },
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.datamigration/services/projects",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.dataprotection/backupvaults",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.datareplication/replicationvaults",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.dependencymap/maps",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.dependencymap/maps/discoverysources",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 77,
+    "ResourceType": "microsoft.eventgrid/systemtopics",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "swedencentral",
+      "westus2",
+      "eastus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.extendedlocation/customlocations",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 5,
+    "ResourceType": "microsoft.hybridcompute/machines",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 16,
+    "ResourceType": "microsoft.hybridcompute/machines/extensions",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 9,
+    "ResourceType": "microsoft.insights/actiongroups",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.insights/activitylogalerts",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.insights/autoscalesettings",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 7,
+    "ResourceType": "microsoft.insights/components",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 8,
+    "ResourceType": "microsoft.insights/datacollectionendpoints",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 31,
+    "ResourceType": "microsoft.insights/datacollectionrules",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 17,
+    "ResourceType": "microsoft.insights/metricalerts",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.insights/scheduledqueryrules",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.insights/webtests",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 8,
+    "ResourceType": "microsoft.keyvault/vaults",
+    "ResourceSkus": [
+      {
+        "name": "Standard",
+        "family": "A"
+      },
+      {
+        "name": "standard",
+        "family": "A"
+      }
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 26,
+    "ResourceType": "microsoft.logic/workflows",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.maintenance/maintenanceconfigurations",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 14,
+    "ResourceType": "microsoft.managedidentity/userassignedidentities",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "eastus2",
+      "swedencentral",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.migrate/assessmentprojects",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.migrate/migrateprojects",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.migrate/movecollections",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.monitor/accounts",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.mysqldiscovery/mysqlsites",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.network/applicationgateways",
+    "ResourceSkus": {
+      "name": "Standard_v2",
+      "capacity": 2,
+      "tier": "Standard_v2",
+      "family": "Generation_1"
+    },
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.network/bastionhosts",
+    "ResourceSkus": [
+      {
+        "name": "Basic"
+      },
+      {
+        "name": "Standard"
+      }
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.network/connections",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "swedencentral"
+    ]
+  },
+  {
+    "ResourceCount": 14,
+    "ResourceType": "microsoft.network/loadbalancers",
+    "ResourceSkus": {
+      "name": "Standard",
+      "tier": "Regional"
+    },
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.network/natgateways",
+    "ResourceSkus": {
+      "name": "Standard",
+      "tier": "Regional"
+    },
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 5,
+    "ResourceType": "microsoft.network/networkintentpolicies",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 27,
+    "ResourceType": "microsoft.network/networkinterfaces",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 44,
+    "ResourceType": "microsoft.network/networksecuritygroups",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "swedencentral",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.network/networkwatchers",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "eastus2",
+      "swedencentral",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 25,
+    "ResourceType": "microsoft.network/networkwatchers/flowlogs",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.network/privatednszones",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.network/privatednszones/virtualnetworklinks",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.network/privateendpoints",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 32,
+    "ResourceType": "microsoft.network/publicipaddresses",
+    "ResourceSkus": [
+      {
+        "name": "Basic",
+        "tier": "Regional"
+      },
+      {
+        "name": "Standard",
+        "tier": "Regional"
+      }
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/publicipprefixes",
+    "ResourceSkus": {
+      "name": "Standard",
+      "tier": "Regional"
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.network/routetables",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.network/serviceendpointpolicies",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/trafficmanagerprofiles",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "global"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.network/virtualnetworkgateways",
+    "ResourceSkus": {
+      "name": "Standard",
+      "capacity": 2,
+      "tier": "Standard"
+    },
+    "AzureRegions": [
+      "swedencentral"
+    ]
+  },
+  {
+    "ResourceCount": 14,
+    "ResourceType": "microsoft.network/virtualnetworks",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "swedencentral",
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.offazure/importsites",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.offazure/mastersites",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.offazure/vmwaresites",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.operationalinsights/querypacks",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 10,
+    "ResourceType": "microsoft.operationalinsights/workspaces",
+    "ResourceSkus": [
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2025-04-17T07:36:08.3478662Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2024-06-04T08:04:40.5434462Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2025-04-07T15:39:34.76Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2025-04-07T16:50:33.565Z"
+      },
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2021-01-07T13:26:55Z"
+      },
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2024-12-10T14:18:51.618Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2024-10-16T11:13:23.705Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2024-09-09T12:02:57.1272107Z"
+      },
+      {
+        "name": "PerGB2018",
+        "lastSkuUpdate": "2023-05-20T03:31:41.393329Z"
+      },
+      {
+        "name": "pergb2018",
+        "lastSkuUpdate": "2024-09-09T12:02:59.009295Z"
+      }
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 30,
+    "ResourceType": "microsoft.operationsmanagement/solutions",
+    "ResourceSkus": [
+      {
+        "Length": 3
+      },
+      {
+        "name": "PerGB"
+      },
+      {
+        "name": "Unified"
+      }
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 4,
+    "ResourceType": "microsoft.portal/dashboards",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 7,
+    "ResourceType": "microsoft.recoveryservices/vaults",
+    "ResourceSkus": {
+      "name": "RS0",
+      "tier": "Standard"
+    },
+    "AzureRegions": [
+      "eastus",
+      "westus2",
+      "swedencentral"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.resourceconnector/appliances",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.resources/deploymentscripts",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 1,
+    "ResourceType": "microsoft.scom/managedinstances",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.sql/managedinstances",
+    "ResourceSkus": {
+      "name": "GP_Gen5",
+      "tier": "GeneralPurpose",
+      "capacity": 4,
+      "family": "Gen5"
+    },
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.sql/managedinstances/databases",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.sql/servers",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 6,
+    "ResourceType": "microsoft.sql/servers/databases",
+    "ResourceSkus": [
+      {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": 50
+      },
+      {
+        "name": "System",
+        "tier": "System",
+        "capacity": 0
+      },
+      {
+        "name": "GP_Gen5",
+        "tier": "GeneralPurpose",
+        "capacity": 2,
+        "family": "Gen5"
+      }
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 2,
+    "ResourceType": "microsoft.sql/virtualclusters",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "westus2",
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 3,
+    "ResourceType": "microsoft.sqlvirtualmachine/sqlvirtualmachines",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus",
+      "westus2"
+    ]
+  },
+  {
+    "ResourceCount": 86,
+    "ResourceType": "microsoft.storage/storageaccounts",
+    "ResourceSkus": [
+      {
+        "name": "Standard_RAGRS",
+        "tier": "Standard"
+      },
+      {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      }
+    ],
+    "AzureRegions": [
+      "eastus",
+      "swedencentral",
+      "westus2",
+      "eastus2"
+    ]
+  },
+  {
+    "ResourceCount": 5,
+    "ResourceType": "microsoft.web/connections",
+    "ResourceSkus": [
+      "N/A"
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 12,
+    "ResourceType": "microsoft.web/serverfarms",
+    "ResourceSkus": [
+      {
+        "name": "S2",
+        "tier": "Standard",
+        "capacity": 1,
+        "family": "S",
+        "size": "S2"
+      },
+      {
+        "name": "Y1",
+        "tier": "Dynamic",
+        "capacity": 0,
+        "family": "Y",
+        "size": "Y1"
+      },
+      {
+        "name": "S1",
+        "tier": "Standard",
+        "capacity": 1,
+        "family": "S",
+        "size": "S1"
+      },
+      {
+        "name": "F1",
+        "tier": "Free",
+        "capacity": 0,
+        "family": "F",
+        "size": "F1"
+      }
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 12,
+    "ResourceType": "microsoft.web/sites",
+    "ResourceSkus": [
+      {
+        "Length": 8
+      },
+      {
+        "Length": 7
+      },
+      {
+        "Length": 4
+      }
+    ],
+    "AzureRegions": [
+      "eastus"
+    ]
+  },
+  {
+    "ResourceCount": 12,
+    "ResourceType": "microsoft.web/sites/slots",
+    "ResourceSkus": {
+      "Length": 8
+    },
+    "AzureRegions": [
+      "eastus"
+    ]
+  }
+]

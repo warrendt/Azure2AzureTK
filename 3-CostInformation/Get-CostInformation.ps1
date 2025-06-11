@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Take a collection of given subscription IDs and return the cost incurred during previous months,
+    Take a collection of given resource IDs and return the cost incurred during previous months,
     grouped as needed. For this we use the Microsoft.CostManagement provider of each subscription.
     Requires Az.CostManagement module
     PS1> Install-Module -Name Az.CostManagement
@@ -12,11 +12,10 @@
     The end date of the period to be examined (default is the last day of the previous month)
 
 .PARAMETER workloadFile
-    A JSON file containing a list subscriptions grouped by workload (see example below)
+    A JSON file containing the resources
 
 .PARAMETER outputFile
-    The Excel file to export the results to, otherwise displayed in the console
-    Important: The output file must not be encrypted (sensitivity label applied), otherwise the Export-Excel cmdlet will fail
+    The CSV file to export the results to, otherwise displayed in the console
 
 .INPUTS
     None
@@ -25,38 +24,13 @@
     None
 
 .EXAMPLE
-    .\cost_query.ps1
-    .\cost_query.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -workloadFile "subscriptions.json" -outputFile "CostManagementQuery.xlsx"
+    .\Get-CostInformation.ps1
+    .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -workloadFile "subscriptions.json" -outputFile "CostManagementQuery.xlsx"
 
 .NOTES
     Documentation links:
     https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage
-    https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery
-
-    Sample JSON input file:
-
-[
-    {
-        "Workload": "SAP",
-        "Subscriptions": [
-            "69f95403-8f1d-40b6-8ff0-beba8f41adea",
-            "b42a8bcf-60dd-4f42-9172-abc08ad2f282"
-        ]
-    },
-    {
-        "Workload": "Citrix",
-        "Subscriptions": [
-            "3b7e8696-d30a-4b2b-acc3-8e2d46956948",
-            "87155661-b471-4573-a86b-1a0d5120b09a"
-        ]
-    },
-    {
-        "Workload": "PLM",
-        "Subscriptions": [
-            "e8605972-0a89-4d50-acce-6a6426c06163"
-        ]
-    }
-]
+    https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery]
 
 #>
 
@@ -71,9 +45,6 @@ param (
 # Output to file (true) or console (false)
 $fileOutput = $true
 
-# Label used as the tab name and table name in Excel
-$label = "CostHistoryDetailed"
-
 # Timeframe
 # Supported types are BillingMonthToDate, Custom, MonthToDate, TheLastBillingMonth, TheLastMonth, WeekToDate
 $timeframe = "Custom"
@@ -87,8 +58,8 @@ $granularity = "Monthly"
 # https://stackoverflow.com/questions/68223909/in-the-azure-consumption-usage-details-api-what-is-the-difference-between-the-m
 $type = "AmortizedCost"
 
-# Scope
-<# Scope can be:
+<#
+Scope can be:
 https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery?view=azps-10.1.0#-scope
 
 Subscription scope       : /subscriptions/{subscriptionId}
@@ -101,8 +72,8 @@ Billing profile scope    : /providers/Microsoft.Billing/billingAccounts/{billing
 Invoice section scope    : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/billingProfiles/{billingProfileId}/invoiceSections/{invoiceSectionId}
 Partner scope            : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/customers/{customerId}
 
-For a customer with a Microsoft Enterprise Agreement or Microsoft Customer Agreement, billing account scope is recommended. #>
-#$scope = "/subscriptions/2228b515-e1c7-4457-83ba-87888ec1efce"
+For a customer with a Microsoft Enterprise Agreement or Microsoft Customer Agreement, billing account scope is recommended.
+#>
 
 # Read the content of the workloads file
 $jsonContent = Get-Content -Path $resourceFile -Raw
@@ -114,7 +85,6 @@ $resourceTable = $workloads | Select-Object ResourceSubscriptionId, ResourceId
 if ($testMode) {
     $subscriptionIds = @($subscriptionIds[0]) # For testing, use only the first subscription ID
 }
-
 
 <#
 Dimensions for grouping the output. Valid dimensions for grouping are:
@@ -188,11 +158,12 @@ $aggregation = @{
 $table = @()
 
 $subscriptionIds = $resourceTable.ResourceSubscriptionId | Sort-Object -Unique
+
 if ($subscriptionIds.Count -eq 1) {
     $subscriptionIds = @($subscriptionIds) # If only one subscription ID is found, use it as an array
 }
 
-# Loop through subscription IDs
+# Loop through subscription IDs and issue a cost management query for the resources in scope
 for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     $scope = "/subscriptions/$($subscriptionIds[$subIndex])"
 
@@ -211,6 +182,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
         -DatasetAggregation $aggregation `
         -DatasetGrouping $grouping `
         -DatasetFilter $filter
+    
     # Convert the query result into a table
     for ($i = 0; $i -lt $queryResult.Row.Count; $i++) {
         $row = [PSCustomObject]@{}

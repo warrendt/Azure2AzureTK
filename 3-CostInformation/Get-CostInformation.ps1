@@ -11,21 +11,15 @@
 .PARAMETER endDate
     The end date of the period to be examined (default is the last day of the previous month)
 
-.PARAMETER workloadFile
+.PARAMETER resourceFile
     A JSON file containing the resources
 
 .PARAMETER outputFile
     The CSV file to export the results to, otherwise displayed in the console
 
-.INPUTS
-    None
-
-.OUTPUTS
-    None
-
 .EXAMPLE
     .\Get-CostInformation.ps1
-    .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -workloadFile "subscriptions.json" -outputFile "CostManagementQuery.xlsx"
+    .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -resourceFile "resources.json" -outputFile "resource_cost.csv"
 
 .NOTES
     Documentation links:
@@ -134,6 +128,10 @@ $grouping = @(
     },
     @{
         type = "Dimension"
+        name = "PricingModel"
+    },
+    @{
+        type = "Dimension"
         name = "MeterCategory"
     },
     @{
@@ -163,7 +161,8 @@ if ($subscriptionIds.Count -eq 1) {
     $subscriptionIds = @($subscriptionIds) # If only one subscription ID is found, use it as an array
 }
 
-# Loop through subscription IDs and issue a cost management query for the resources in scope
+# Loop through subscription IDs and issue a cost management query for the resources in each subscription
+
 for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     $scope = "/subscriptions/$($subscriptionIds[$subIndex])"
 

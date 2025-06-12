@@ -13,6 +13,7 @@
 1-Collect/summary.json
 2-AvailabilityCheck/Availability_*.json
 2-AvailabilityCheck/Azure_*.json
+3-CostInformation/resources.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

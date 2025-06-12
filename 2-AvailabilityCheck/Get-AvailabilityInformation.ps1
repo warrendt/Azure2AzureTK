@@ -482,7 +482,7 @@ function Import-CurrentEnvironment {
             $obj = $obj | Select-Object * -ExcludeProperty ResourceSkus
         }
         $obj
-    }    
+    }
     return @{
         Data = $CurrentEnvironment
     }

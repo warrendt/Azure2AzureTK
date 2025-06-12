@@ -56,7 +56,7 @@ function Out-JSONFile {
         [string]$FileName
     )
     # This function writes the provided data to a JSON file at the specified path.
-    Write-Output "  Writing data to file: $FileName"
+    Write-Output "  Writing data to file: $FileName" | Out-Host
     $Data | ConvertTo-Json -Depth 20 | Out-File -FilePath "$(Get-Location)\$FileName" -Force
 }
 
@@ -119,7 +119,7 @@ function Import-Provider {
     }
 }
 
-function Import-Regions {
+function Import-Region {
     # This function retrieves all Azure regions, sorts them alphabetically, flattens metadata to the top level, and removes PII information.
     Write-Output "Working on regions" | Out-Host
     Write-Output "  Retrieving regions information" | Out-Host
@@ -207,177 +207,162 @@ function Import-SKU-VM {
     }
 }
 
-function Import-SKU-SQLManagedInstance {
-    # This function retrieves all available SQL managed instance SKUs across Azure regions and consolidates them.
-    Write-Output "Working on SQL managed instance SKUs" | Out-Host
+function Import-SKU-SQL {
+    param (
+        [Parameter(Mandatory = $true)]
+        [object]$ResourceTypeSQL
+    )
+    # This function retrieves the SKU information for SQL resources based on the specified resource type.
+    switch ($ResourceTypeSQL) {
+        "servers/databases" {
+           $OutputText = "SQL Server database"
+           $OutputFile = "Azure_SKUs_SQL_Server_Database.json"
+        }
+        "managedInstances" {
+            $OutputText = "SQL managed instance"
+            $OutputFile = "Azure_SKUs_SQL_Managed_Instance.json"
+        }
+        default {
+            Write-Output "    No SKUs found for this resource type." | Out-Host
+            return
+        }
+    }
+    Write-Output "Working on $OutputText SKUs" | Out-Host
     $SKUs = @()
     # Find the Microsoft.Sql provider from the available providers
-    Write-Output "  Retrieving SQL managed instance SKU regions information" | Out-Host
+    Write-Output "  Retrieving $OutputText SKU regions information" | Out-Host
     $Resources_SQL = $Resources_All | Where-Object { $_.Namespace -ieq "Microsoft.Sql" }
     if ($Resources_SQL) {
-        # Select the resource type for SQL managed instance SKUs
-        $Resources_SQLManagedInstance = $Resources_SQL.ResourceTypes | Where-Object { $_.Type -ieq "managedInstances" }
-        if ($Resources_SQLManagedInstance) {
-            Write-Output "  Adding SQL managed instance SKUs for consolidated regions" | Out-Host
-            $Regions = $Resources_SQLManagedInstance.Locations
+        # Select the resource type for specific SQL SKUs
+        $Resource_SQL = $Resources_SQL.ResourceTypes | Where-Object { $_.Type -ieq $ResourceTypeSQL }
+        if ($Resource_SQL) {
+            Write-Output "  Adding $OutputText SKUs for consolidated regions" | Out-Host
+            $Regions = $Resource_SQL.Locations
             $TotalRegions = $Regions.Count
             $CurrentRegionIndex = 0
             foreach ($Region in $Regions) {
                 $CurrentRegionIndex++
                 # Convert the display region into a region code for the URL
                 $RegionCode = ($Region -replace '\s','').ToLower()
-                Write-Output ("    Retrieving SQL managed instance SKU for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region) | Out-Host
+                Write-Output ("    Retrieving $OutputText SKU for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region) | Out-Host
                 try {
-                    $Response = Invoke-RestMethod -Uri "$($RESTAPI.Uri)/providers/Microsoft.Sql/locations/$RegionCode/capabilities?api-version=2021-02-01-preview" -Headers $RESTAPI.Headers -Method Get
-                    # Select only the supportedManagedInstanceVersions property from the response
-                    $FilteredCapabilities = $Response | Select-Object -Property supportedManagedInstanceVersions
-                    # Rebuild supportedManagedInstanceVersions
-                    if ($FilteredCapabilities -and $FilteredCapabilities.supportedManagedInstanceVersions) {
-                        $FilteredCapabilities.supportedManagedInstanceVersions = $FilteredCapabilities.supportedManagedInstanceVersions | ForEach-Object {
-                            $allSkus = @()
-                            if ($_.supportedEditions) {
-                                foreach ($edition in $_.supportedEditions) {
-                                    if ($edition.supportedFamilies) {
-                                        $allSkus += $edition.supportedFamilies
+                    switch ($ResourceTypeSQL) {
+                        "servers/databases" {
+                            # Process SKUs SQL servers databases
+                            $Response = Invoke-RestMethod -Uri "$($RESTAPI.Uri)/providers/Microsoft.Sql/locations/$RegionCode/capabilities?api-version=2021-02-01-preview" -Headers $RESTAPI.Headers -Method Get
+                            # Select only the supportedServerVersions property from the response
+                            $FilteredCapabilities = $Response | Select-Object -Property supportedServerVersions
+                            # Rebuild supportedServerVersions
+                            if ($FilteredCapabilities -and $FilteredCapabilities.supportedServerVersions) {
+                                $FilteredCapabilities.supportedServerVersions = $FilteredCapabilities.supportedServerVersions | ForEach-Object {
+                                    $allSkus = @()
+                                    if ($_.supportedEditions) {
+                                        foreach ($edition in $_.supportedEditions) {
+                                            if ($edition.supportedServiceLevelObjectives) {
+                                                $allSkus += ($edition.supportedServiceLevelObjectives | ForEach-Object {
+                                                    $_.sku
+                                                })
+                                            }
+                                        }
+                                    }
+                                    # Group and consolidate duplicates based on sku name, tier, family, and capacity
+                                    $uniqueSkus = $allSkus |
+                                        Group-Object -Property { "$($_.name)|$($_.tier)|$($_.family)|$($_.capacity)" } |
+                                        ForEach-Object { $_.Group[0] }
+                                    # Transform each consolidated SKU object, retaining the original properties
+                                    $uniqueSkus = $uniqueSkus | ForEach-Object {
+                                        $obj = [PSCustomObject]@{
+                                            name     = $_.name
+                                            tier     = $_.tier
+                                            capacity = $_.capacity
+                                        }
+                                        if ($_.family) {
+                                            $obj | Add-Member -MemberType NoteProperty -Name family -Value $_.family
+                                        }
+                                        $obj
+                                    }
+                                    [PSCustomObject]@{
+                                        skus = $uniqueSkus
                                     }
                                 }
                             }
-                            # Group and consolidate duplicates based on family sku and family name
-                            $uniqueSkus = $allSkus | Group-Object -Property { "$($_.sku)|$($_.name)" } | ForEach-Object { $_.Group[0] }
-                            # Transform each consolidated object
-                            $uniqueSkus = $uniqueSkus | ForEach-Object {
-                                [PSCustomObject]@{
-                                    name = $_.name
-                                    sku  = $_.sku
+                            # Flatten the output
+                            if ($FilteredCapabilities.supportedServerVersions.Count -gt 0) {
+                                $sv = $FilteredCapabilities.supportedServerVersions[0]
+                            }
+                            else {
+                                $sv = [PSCustomObject]@{ skus = @() }
+                            }
+                            # Append the flattened object with region context
+                            $SKUs += [PSCustomObject]@{
+                                Region     = $Region
+                                RegionCode = $RegionCode
+                                skus       = $sv.skus
+                            }
+                        }
+                        "managedInstances" {
+                            # Process SKUs for SQL managed instances
+                            $Response = Invoke-RestMethod -Uri "$($RESTAPI.Uri)/providers/Microsoft.Sql/locations/$RegionCode/capabilities?api-version=2021-02-01-preview" -Headers $RESTAPI.Headers -Method Get
+                            # Select only the supportedManagedInstanceVersions property from the response
+                            $FilteredCapabilities = $Response | Select-Object -Property supportedManagedInstanceVersions
+                            # Rebuild supportedManagedInstanceVersions
+                            if ($FilteredCapabilities -and $FilteredCapabilities.supportedManagedInstanceVersions) {
+                                $FilteredCapabilities.supportedManagedInstanceVersions = $FilteredCapabilities.supportedManagedInstanceVersions | ForEach-Object {
+                                    $allSkus = @()
+                                    if ($_.supportedEditions) {
+                                        foreach ($edition in $_.supportedEditions) {
+                                            if ($edition.supportedFamilies) {
+                                                $allSkus += $edition.supportedFamilies
+                                            }
+                                        }
+                                    }
+                                    # Group and consolidate duplicates based on family sku and family name
+                                    $uniqueSkus = $allSkus | Group-Object -Property { "$($_.sku)|$($_.name)" } | ForEach-Object { $_.Group[0] }
+                                    # Transform each consolidated object
+                                    $uniqueSkus = $uniqueSkus | ForEach-Object {
+                                        [PSCustomObject]@{
+                                            name = $_.name
+                                            sku  = $_.sku
+                                        }
+                                    }
+                                    [PSCustomObject]@{
+                                        skus = $uniqueSkus
+                                    }
                                 }
                             }
-                            [PSCustomObject]@{
-                                skus = $uniqueSkus
+                            # Flatten the output
+                            if ($FilteredCapabilities.supportedManagedInstanceVersions.Count -gt 0) {
+                                $sv = $FilteredCapabilities.supportedManagedInstanceVersions[0]
+                            }
+                            else {
+                                $sv = [PSCustomObject]@{ skus = @() }
+                            }
+                            # Append the flattened object with region context
+                            $SKUs += [PSCustomObject]@{
+                                Region     = $Region
+                                RegionCode = $RegionCode
+                                skus       = $sv.skus
                             }
                         }
                     }
-                    # Flatten the output
-                    if ($FilteredCapabilities.supportedManagedInstanceVersions.Count -gt 0) {
-                        $sv = $FilteredCapabilities.supportedManagedInstanceVersions[0]
-                    }
-                    else {
-                        $sv = [PSCustomObject]@{ skus = @() }
-                    }
-                    # Append the flattened object with region context
-                    $SKUs += [PSCustomObject]@{
-                        Region     = $Region
-                        RegionCode = $RegionCode
-                        skus       = $sv.skus
-                    }
                 }
                 catch {
-                    Write-Output ("      Error retrieving SQL managed instance SKUs for {0}: {1}" -f $RegionCode, $_.Exception.Message) | Out-Host
+                    Write-Output ("      Error retrieving $OutputText SKUs for {0}: {1}" -f $RegionCode, $_.Exception.Message) | Out-Host
                 }
             }
         }
         else {
-            Write-Output "  No resource type 'managedInstances' found for Microsoft.Sql in provider information." | Out-Host
+            Write-Output "  No resource type '$ResourceTypeSQL' found for Microsoft.Sql in provider information." | Out-Host
         }
     }
     else {
         Write-Output "  Microsoft.Sql provider not found in provider information." | Out-Host
     }
-    # Save SQL managed instance SKUs to a JSON file
-    Out-JSONFile -Data $SKUs -fileName "Azure_SKUs_SQL_Managed_Instance.json"
+    # Save SQL SKUs to a JSON file
+    Out-JSONFile -Data $SKUs -fileName $OutputFile
     return @{
         Data = $SKUs
-    }  
-}
-
-function Import-SKU-SQLServerDatabase {
-    # This function retrieves all available SQL Server database SKUs across Azure regions and consolidates them.
-    Write-Output "Working on SQL Server database SKUs" | Out-Host
-    $SKUs = @()
-    # Find the Microsoft.Sql provider from the available providers
-    Write-Output "  Retrieving SQL Server database SKU regions information" | Out-Host
-    $Resources_SQL = $Resources_All | Where-Object { $_.Namespace -ieq "Microsoft.Sql" }
-    if ($Resources_SQL) {
-        # Select the resource type for SQL Server database SKUs
-        $Resource_SQLServerDatabase = $Resources_SQL.ResourceTypes | Where-Object { $_.Type -ieq "servers/databases" }
-        if ($Resource_SQLServerDatabase) {
-            Write-Output "  Adding SQL Server database SKUs for consolidated regions" | Out-Host
-            $Regions = $Resource_SQLServerDatabase.Locations
-            $TotalRegions = $Regions.Count
-            $CurrentRegionIndex = 0
-            foreach ($Region in $Regions) {
-                $CurrentRegionIndex++
-                # Convert the display region into a region code for the URL
-                $RegionCode = ($Region -replace '\s','').ToLower()
-                Write-Output ("    Retrieving SQL Server database SKU for region {0:D03} of {1:D03}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region) | Out-Host
-                try {
-                    $Response = Invoke-RestMethod -Uri "$($RESTAPI.Uri)/providers/Microsoft.Sql/locations/$RegionCode/capabilities?api-version=2021-02-01-preview" -Headers $RESTAPI.Headers -Method Get
-                    # Get only the supportedServerVersions property from the response
-                    $FilteredCapabilities = $Response | Select-Object -Property supportedServerVersions
-                    # Rebuild supportedServerVersions
-                    if ($FilteredCapabilities -and $FilteredCapabilities.supportedServerVersions) {
-                        $FilteredCapabilities.supportedServerVersions = $FilteredCapabilities.supportedServerVersions | ForEach-Object {
-                            $allSkus = @()
-                            if ($_.supportedEditions) {
-                                foreach ($edition in $_.supportedEditions) {
-                                    if ($edition.supportedServiceLevelObjectives) {
-                                        $allSkus += ($edition.supportedServiceLevelObjectives | ForEach-Object {
-                                            $_.sku
-                                        })
-                                    }
-                                }
-                            }
-                            # Group and consolidate duplicates based on sku name, tier, family, and capacity
-                            $uniqueSkus = $allSkus |
-                                Group-Object -Property { "$($_.name)|$($_.tier)|$($_.family)|$($_.capacity)" } |
-                                ForEach-Object { $_.Group[0] }
-                            # Transform each consolidated SKU object, retaining the original properties
-                            $uniqueSkus = $uniqueSkus | ForEach-Object {
-                                $obj = [PSCustomObject]@{
-                                    name     = $_.name
-                                    tier     = $_.tier
-                                    capacity = $_.capacity
-                                }
-                                if ($_.family) {
-                                    $obj | Add-Member -MemberType NoteProperty -Name family -Value $_.family
-                                }
-                                $obj
-                            }
-                            [PSCustomObject]@{
-                                skus = $uniqueSkus
-                            }
-                        }
-                    }
-                    # Flatten the output
-                    if ($FilteredCapabilities.supportedServerVersions.Count -gt 0) {
-                        $sv = $FilteredCapabilities.supportedServerVersions[0]
-                    }
-                    else {
-                        $sv = [PSCustomObject]@{ skus = @() }
-                    }
-                    # Append the flattened object with region context
-                    $SKUs += [PSCustomObject]@{
-                        Region     = $Region
-                        RegionCode = $RegionCode
-                        skus       = $sv.skus
-                    }
-                }
-                catch {
-                    Write-Output ("      Error retrieving SQL Server database SKUs for {0}: {1}" -f $RegionCode, $_.Exception.Message) | Out-Host
-                }
-            }
-        }
-        else {
-            Write-Output "  No resource type 'servers/databases' found for Microsoft.Sql in provider information." | Out-Host
-        }
     }
-    else {
-        Write-Output "  Microsoft.Sql provider not found in provider information." | Out-Host
-    }
-    # Save SQL Server database SKUs to a JSON file
-    Out-JSONFile -Data $SKUs -fileName "Azure_SKUs_SQL_Server_Database.json"    
-    return @{
-        Data = $SKUs
-    }  
 }
 
 function Import-SKU-StorageAccount {
@@ -440,10 +425,10 @@ function Import-SKU-StorageAccount {
         }
     }
     # Save the storage account SKUs to a JSON file
-    Out-JSONFile -Data $SKUs -fileName "Azure_SKUs_StorageAccount.json"    
+    Out-JSONFile -Data $SKUs -fileName "Azure_SKUs_StorageAccount.json"
     return @{
         Data = $SKUs
-    }  
+    }
 }
 
 function Import-CurrentEnvironment {
@@ -649,13 +634,13 @@ $RESTAPI = Initialize-RESTAPI
 # Import all resource types
 $Resources_All = (Import-Provider).Data
 # Import all Azure regions
-$Regions_All = Import-Regions
+$Regions_All = Import-Region
 # Import VM SKUs
 $VM_SKU = (Import-SKU-VM).Data
 # Import SQL managed instance SKUs
-$SQL_ManagedInstance_SKU = (Import-SKU-SQLManagedInstance).Data
+$SQL_ManagedInstance_SKU = (Import-SKU-SQL -ResourceTypeSQL "managedInstances").Data
 # Import SQL Server database SKUs
-$SQL_Server_Database_SKU = (Import-SKU-SQLServerDatabase).Data
+$SQL_Server_Database_SKU = (Import-SKU-SQL -ResourceTypeSQL "servers/databases").Data
 # Import storage account SKUs
 $StorageAccount_SKU = (Import-SKU-StorageAccount).Data
 # Start of availability mapping to current implementation

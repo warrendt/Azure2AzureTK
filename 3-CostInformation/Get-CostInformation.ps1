@@ -181,6 +181,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
         -DatasetAggregation $aggregation `
         -DatasetGrouping $grouping `
         -DatasetFilter $filter
+        # -DatasetGranularity $granularity
     
     # Convert the query result into a table
     for ($i = 0; $i -lt $queryResult.Row.Count; $i++) {

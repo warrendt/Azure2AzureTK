@@ -45,7 +45,7 @@ $timeframe = "Custom"
 
 # Granularity
 # Supported types are Daily and Monthly so far. Omit just to get the total cost.
-$granularity = "Monthly"
+#$granularity = "Monthly"
 
 # Type
 # Supported types are Usage (deprecated), ActualCost, and AmortizedCost

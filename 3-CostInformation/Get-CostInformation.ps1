@@ -2,7 +2,7 @@
 .SYNOPSIS
     Take a collection of given resource IDs and return the cost incurred during previous months,
     grouped as needed. For this we use the Microsoft.CostManagement provider of each subscription.
-    Requires Az.CostManagement module
+    Requires Az.CostManagement module 0.4.2 or later.
     PS1> Install-Module -Name Az.CostManagement
 
 .PARAMETER startDate
@@ -20,11 +20,6 @@
 .EXAMPLE
     .\Get-CostInformation.ps1
     .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -resourceFile "resources.json" -outputFile "resource_cost.csv"
-
-.NOTES
-    Documentation links:
-    https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage
-    https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery]
 
 #>
 
@@ -52,23 +47,6 @@ $timeframe = "Custom"
 # https://stackoverflow.com/questions/68223909/in-the-azure-consumption-usage-details-api-what-is-the-difference-between-the-m
 $type = "AmortizedCost"
 
-<#
-Scope can be:
-https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery?view=azps-10.1.0#-scope
-
-Subscription scope       : /subscriptions/{subscriptionId}
-Resource group scope     : /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}
-Billing account scope    : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}
-Department scope         : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/departments/{departmentId}
-Enrollment account scope : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/enrollmentAccounts/{enrollmentAccountId}
-Management group scope   : /providers/Microsoft.Management/managementGroups/{managementGroupId}
-Billing profile scope    : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/billingProfiles/{billingProfileId}
-Invoice section scope    : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/billingProfiles/{billingProfileId}/invoiceSections/{invoiceSectionId}
-Partner scope            : /providers/Microsoft.Billing/billingAccounts/{billingAccountId}/customers/{customerId}
-
-For a customer with a Microsoft Enterprise Agreement or Microsoft Customer Agreement, billing account scope is recommended.
-#>
-
 # Read the content of the workloads file
 $jsonContent = Get-Content -Path $resourceFile -Raw
 
@@ -80,43 +58,6 @@ if ($testMode) {
     $subscriptionIds = @($subscriptionIds[0]) # For testing, use only the first subscription ID
 }
 
-<#
-Dimensions for grouping the output. Valid dimensions for grouping are:
-
-AccountName
-BenefitId
-BenefitName
-BillingAccountId
-BillingMonth
-BillingPeriod
-ChargeType
-ConsumedService
-CostAllocationRuleName
-DepartmentName
-EnrollmentAccountName
-Frequency
-InvoiceNumber
-MarkupRuleName
-Meter
-MeterCategory
-MeterId
-MeterSubcategory
-PartNumber
-PricingModel
-PublisherType
-ReservationId
-ReservationName
-ResourceGroup
-ResourceGroupName
-ResourceGuid
-ResourceId
-ResourceLocation
-ResourceType
-ServiceName
-ServiceTier
-SubscriptionId
-SubscriptionName
-#>
 $grouping = @(
     @{
         type = "Dimension"
@@ -169,7 +110,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     $resourceIds = $resourceTable | Where-Object { $_.ResourceSubscriptionId -eq $subscriptionIds[$subIndex] } | Select-Object -ExpandProperty ResourceId
     Write-Output "Querying subscription $(${subIndex}+1) of $($subscriptionIds.Count): $($subscriptionIds[$subIndex])"
 
-    $dimensions = New-AzCostManagementQueryComparisonExpressionObject -Name 'ResourceId' -Value $resourceIds -Operator 'In'
+    $dimensions = New-AzCostManagementQueryComparisonExpressionObject -Name 'ResourceId' -Value $resourceIds
     $filter = New-AzCostManagementQueryFilterObject -Dimensions $dimensions
 
     $queryResult = Invoke-AzCostManagementQuery `

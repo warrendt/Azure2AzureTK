@@ -1,4 +1,6 @@
-## Cost information script
+# Cost data retrieval
+
+## About the script
 
 This script is intended to take a collection of given resource IDs and return the cost incurred during previous months, grouped as needed. For this we use the Microsoft.CostManagement provider of each subscription. This means one call of the Cost Management PowerShell module per subscription.
 
@@ -16,11 +18,12 @@ Documentation regarding the Az.CostManagement module is not always straightforwa
 
 | Documentation | Link |
 | -------- | ------- |
-| Cost Management Query (API) | https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage |
-| Az.CostManagement Query (PowerShell) | https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery |
+| Cost Management Query (API) | [Link](https://learn.microsoft.com/en-us/rest/api/cost-management/query/usage) |
+| Az.CostManagement Query (PowerShell) | [Link](https://learn.microsoft.com/en-us/powershell/module/az.costmanagement/invoke-azcostmanagementquery) |
 
 Valid dimensions for grouping are:
-```
+
+``` text
 AccountName
 BenefitId
 BenefitName

@@ -28,7 +28,7 @@ param(
     [Parameter(Mandatory = $false)] [string]$outputFile = ".\summary.json" # Json file to export the results to
 )
 
-# Check if the file exists  
+# Check if the file exists
 if (-Not (Test-Path -Path $filePath)) {
     Write-Host "File not found: $filePath"
     exit
@@ -81,14 +81,14 @@ foreach ($Group in $Data) {
 
 # Start counting individual Disk SKUs
 # Check if the worksheet 'All_Assessed_Disks' exists in the Excel file
-$worksheetExists = $false   
+$worksheetExists = $false
 try {
     $worksheets = Get-ExcelSheetInfo -Path $filePath
     $worksheetExists = $worksheets | Where-Object { $_.Name -eq 'All_Assessed_Disks' }
 } catch {
     Write-Host "Error accessing the Excel file: $_"
     exit
-}   
+}
 if (-Not $worksheetExists) {
     Write-Host "Worksheet 'All_Assessed_Disks' not found in the Excel file."
     exit
@@ -104,17 +104,17 @@ $diskSkus = @()
 foreach ($Group in $Data) {
     Write-Host "Recommended Disk Size SKU: $($Group.Name) - Count: $($Group.Count)" -ForegroundColor Cyan
     $diskSkus += @{
-        name = if ($Group.Name -like "PremiumV2*") { "PremiumV2_LRS" } else { 
-                    if ($Group.Name -like "Premium*") { "Premium_LRS" } else { 
-                        if ($Group.Name -like "StandardSSD*") { "StandardSSD_LRS" } else { 
+        name = if ($Group.Name -like "PremiumV2*") { "PremiumV2_LRS" } else {
+                    if ($Group.Name -like "Premium*") { "Premium_LRS" } else {
+                        if ($Group.Name -like "StandardSSD*") { "StandardSSD_LRS" } else {
                             if ($Group.Name -like "Standard*") { "Standard_LRS" } else {
                                 if ($Group.Name -like "Ultra*") { "UltraSSD_LRS" } else { "Unknown" } } } } }
             tier = $Group.Name -replace "Premium|Standard|Ultra", "" # Extract size from SKU name
- 
+
     }
 }
 
-    
+
 # Build the final object
 $output = @(
     @{

@@ -53,7 +53,7 @@ Get-AzureServices.ps1 -scopeType subscription -subscriptionId <subscription-id>
 Get-AzureServices.ps1 -multiSubscription -workloadFile <path-to-workload-file>
 ```
 
-## 1-Azure Migrate Script Examples
+### 1.1-Azure Migrate Script Examples
 
 ```powershell
 Get-RessourcesFromAM.ps1 -FilePath "C:\path\to\Assessment.xlsx" -OutputFile "C:\path\to\summary.json"

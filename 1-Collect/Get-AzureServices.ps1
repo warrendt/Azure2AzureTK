@@ -151,7 +151,7 @@ function Get-rType {
         #"Property for $outputVarName for $resourceType indicated in $filePath"
         $property = $json | Where-Object { $psItem.resourceType -eq $resourceType } | Select-Object -ExpandProperty property
         # check if property is an array
-        If ($property -is [array] -or $property -is [object]) {
+        If ($property -is [system.array] -or $property -is [System.Management.Automation.PSCustomObject]) {
             $outputVar = @()
             foreach ($item in $property) {
                 $varName = $item.PSObject.Properties.Name

@@ -312,19 +312,18 @@ function Import-SKU-SQL {
                                     if ($_.supportedEditions) {
                                         foreach ($edition in $_.supportedEditions) {
                                             if ($edition.supportedFamilies) {
-                                                $allSkus += $edition.supportedFamilies
+                                                foreach ($family in $edition.supportedFamilies) {
+                                                    $allSkus += [PSCustomObject]@{
+                                                        tier   = $edition.name
+                                                        family = $family.name
+                                                        name   = $family.sku
+                                                    }
+                                                }
                                             }
                                         }
                                     }
-                                    # Group and consolidate duplicates based on family sku and family name
-                                    $uniqueSkus = $allSkus | Group-Object -Property { "$($_.sku)|$($_.name)" } | ForEach-Object { $_.Group[0] }
-                                    # Transform each consolidated object
-                                    $uniqueSkus = $uniqueSkus | ForEach-Object {
-                                        [PSCustomObject]@{
-                                            name = $_.name
-                                            sku  = $_.sku
-                                        }
-                                    }
+                                    # Group and consolidate duplicates based on family and SKU
+                                    $uniqueSkus = $allSkus | Group-Object -Property { "$($_.family)|$($_.name)" } | ForEach-Object { $_.Group[0] }
                                     [PSCustomObject]@{
                                         skus = $uniqueSkus
                                     }
@@ -569,9 +568,9 @@ function Join-SKU2Region {
                 Write-Output ("    Processing region {0:D3} of {1:D3}: {2}" -f $CurrentRegionIndex, $TotalRegions, $Region.region)
                 $newSKUs = @()
                 switch ($ResourceType) {
-                    "microsoft.compute/disks" {
-                        # Process SKUs for compute disks
-                        # # Check is against storage account SKUs because because compute disks will be reported back in storage account SKU format
+                    {($_ -eq "microsoft.compute/disks") -or ($_ -eq "microsoft.storage/storageaccounts")} {
+                        # Process SKUs for compute disks or storage accounts
+                        # # Check for compute disks is against storage account SKUs because because compute disks will be reported back in storage account SKU format
                         foreach ($sku in $Region.SKUs) {
                             $isAvailable = "false"
                             foreach ($store in $StorageAccount_SKU) {
@@ -611,6 +610,76 @@ function Join-SKU2Region {
                                 name      = $skuName
                                 available = $isAvailable
                             }
+                            $newSKUs += $newObj
+                        }
+                    }
+                    "microsoft.sql/managedinstances" {
+                        # Process SKUs for SQL managed instances.
+                        $implSku = $resource.ImplementedSkus
+                        if ($implSku -and -not ($implSku -is [array])) { 
+                            $implSku = @($implSku) 
+                        }
+                        # Retrieve SQL managed instance SKU availability for the current region.
+                        $sqlRegionData = $SQL_ManagedInstance_SKU | Where-Object { 
+                            ($_.Region -ieq $Region.region) -or ($_.RegionCode -ieq $Region.region)
+                        }
+                        foreach ($sku in $implSku) {
+                            $isAvailable = "false"
+                            if ($sqlRegionData) {
+                                foreach ($dbSku in $sqlRegionData.skus) {
+                                    $matchName   = ($dbSku.name -ieq $sku.name)
+                                    $matchTier   = ($dbSku.tier -ieq $sku.tier)
+                                    $matchFamily = ($dbSku.family -ieq $sku.family)
+                                    # Capacity property can be ignored for managed instances because if all other properties match, it can be considered available.
+                                    if ($matchName -and $matchTier -and $matchFamily) {
+                                        $isAvailable = "true"
+                                        break  # Found a matching SKU; stop looping.
+                                    }
+                                }
+                            }
+                            # Create a new object for the SKU.
+                            $newObj = New-Object PSObject -Property @{
+                                name      = $sku.name
+                                tier      = $sku.tier
+                                family    = $sku.family
+                                available = $isAvailable
+                            }
+                            $newSKUs += $newObj
+                        }
+                    }
+                    "microsoft.sql/servers/databases" {
+                        # Process SKUs for SQL Server databases
+                        $sqlRegionData = $SQL_Server_Database_SKU | Where-Object { $_.Region -ieq $Region.region }
+                        foreach ($sku in $Region.SKUs) {
+                            $isAvailable = "false"
+                            if ($sqlRegionData) {
+                                foreach ($dbSku in $sqlRegionData.skus) {
+                                    $matchName     = ($dbSku.name -eq $sku.name)
+                                    $matchTier     = ($dbSku.tier -eq $sku.tier)
+                                    $matchCapacity = ($dbSku.capacity -eq $sku.capacity)
+                                    # Check for family property if it exists on either side.
+                                    $matchFamily = $true
+                                    if ($sku.PSObject.Properties["family"] -or $dbSku.PSObject.Properties["family"]) {
+                                        $matchFamily = ($dbSku.family -eq $sku.family)
+                                    }
+                                    if ($matchName -and $matchTier -and $matchCapacity -and $matchFamily) {
+                                        $isAvailable = "true"
+                                        break  # Found a matching SKU; stop looping.
+                                    }
+                                }
+                            }
+                            # Create a new object for the SKU.
+                            $newObjProps = @{
+                                name      = $sku.name
+                                tier      = $sku.tier
+                                capacity  = $sku.capacity
+                                available = $isAvailable
+                            }
+                            # Family is not always present, so check if it exists before adding
+                            if ($sku.PSObject.Properties["family"]) {
+                                $newObjProps.Add("family", $sku.family)
+                            }
+                            $newObj = New-Object PSObject -Property $newObjProps
                             $newSKUs += $newObj
                         }
                     }
@@ -654,5 +723,8 @@ Initialize-SKU2Region
 # Availability SKU mappings
 Join-SKU2Region -ResourceType "microsoft.compute/disks"
 Join-SKU2Region -ResourceType "microsoft.compute/virtualMachines"
+Join-SKU2Region -ResourceType "microsoft.sql/managedinstances"
+Join-SKU2Region -ResourceType "microsoft.sql/servers/databases"
+Join-SKU2Region -ResourceType "microsoft.storage/storageaccounts"
 # Save the availability mapping to a JSON file
 Out-JSONFile -Data $AvailabilityMapping -fileName "Availability_Mapping.json"

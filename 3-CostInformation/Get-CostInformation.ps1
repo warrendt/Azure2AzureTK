@@ -15,11 +15,17 @@
     A JSON file containing the resources
 
 .PARAMETER outputFile
-    The CSV file to export the results to, otherwise displayed in the console
+    The stem of the output file to be created. The extension will be added automatically based on the output format. Not used if outputFormat is 'console'.
+
+.PARAMETER outputFormat
+    The format of the output file. Supported formats are 'json', 'csv', and 'console'. Default is 'json'.
+
+.PARAMETER testMode
+    If set, only the first subscription ID will be used to retrieve a quick result set for testing purposes.
 
 .EXAMPLE
     .\Get-CostInformation.ps1
-    .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -resourceFile "resources.json" -outputFile "resource_cost.csv"
+    .\Get-CostInformation.ps1 -startDate "2023-01-01" -endDate "2023-06-30" -resourceFile "resources.json" -outputFile "resource_cost" -outputFormat "json"
 
 #>
 
@@ -27,12 +33,23 @@ param (
     [string]$startDate    = (Get-Date).AddMonths(-1).ToString("yyyy-MM-01"),                    # the first day of the previous month
     [string]$endDate      = (Get-Date).AddDays(-1 * (Get-Date).Day).ToString("yyyy-MM-dd"),     # the last day of the previous month
     [string]$resourceFile = "resources.json",
-    [string]$outputFile   = "resource_cost.csv",
+    [string]$outputFile   = "resource_cost",
+    [string]$outputFormat = "json",                # json, csv or console
     [switch]$testMode
 )
 
-# Output to file (true) or console (false)
-$fileOutput = $true
+# Input checking
+# Check that the resource file exists
+if (-not (Test-Path -Path $resourceFile)) {
+    Write-Error "Resource file '$resourceFile' does not exist."
+    exit 1
+}
+
+# Check that the requested output format is valid
+if ($outputFormat -notin @("json", "csv", "console")) {
+    Write-Error "Output format '$outputFormat' is not supported. Supported formats are 'json', 'csv', and 'console'."
+    exit 1
+}
 
 # Timeframe
 # Supported types are BillingMonthToDate, Custom, MonthToDate, TheLastBillingMonth, TheLastMonth, WeekToDate
@@ -136,11 +153,20 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     # $subIndex = $subscriptionIds.Count
 }
 
-# If an output file is specified, export the table to Excel, otherwise display it
-if ($fileOutput) {
-    #$table | Export-Excel -WorksheetName $label -TableName $label -Path .\$outputFile
+# Output in the desired format
+if ($outputFormat -eq "json") {
+    if ($outputFile -notmatch '\.json$') {
+        $outputFile += ".json"
+    }
+    $table | ConvertTo-Json | Out-File -FilePath $outputFile -Encoding UTF8
+    Write-Output "$($table.Count) rows written to $outputFile"
+} elseif ($outputFormat -eq "csv") {
+    if ($outputFile -notmatch '\.csv$') {
+        $outputFile += ".csv"
+    }
     $table | Export-Csv -Path $outputFile -NoTypeInformation -Encoding UTF8
     Write-Output "$($table.Count) rows written to $outputFile"
 } else {
+    # Display the table in the console
     $table | Format-Table -AutoSize
 }

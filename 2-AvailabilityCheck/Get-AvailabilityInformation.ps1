@@ -616,11 +616,11 @@ function Join-SKU2Region {
                     "microsoft.sql/managedinstances" {
                         # Process SKUs for SQL managed instances.
                         $implSku = $resource.ImplementedSkus
-                        if ($implSku -and -not ($implSku -is [array])) { 
-                            $implSku = @($implSku) 
+                        if ($implSku -and -not ($implSku -is [array])) {
+                            $implSku = @($implSku)
                         }
                         # Retrieve SQL managed instance SKU availability for the current region.
-                        $sqlRegionData = $SQL_ManagedInstance_SKU | Where-Object { 
+                        $sqlRegionData = $SQL_ManagedInstance_SKU | Where-Object {
                             ($_.Region -ieq $Region.region) -or ($_.RegionCode -ieq $Region.region)
                         }
                         foreach ($sku in $implSku) {

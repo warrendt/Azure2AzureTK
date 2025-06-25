@@ -28,40 +28,16 @@ param(
     [Parameter(Mandatory = $false)] [string]$outputFile = ".\summary.json" # Json file to export the results to
 )
 
-# Check if the file exists
-if (-Not (Test-Path -Path $filePath)) {
-    Write-Output "File not found: $filePath"
-    exit
-}
-# Ensure the ImportExcel module is installed
-if (-Not (Get-Module -ListAvailable -Name ImportExcel)) {
-    Write-Output "ImportExcel module is not installed. Please install it using 'Install-Module ImportExcel'."
-    exit
-}
-# Ensure the ImportExcel module is loaded
-if (-Not (Get-Module -Name ImportExcel)) {
-    Write-Output "Loading ImportExcel module..."
-    Import-Module ImportExcel
-}
-# Check if the ImportExcel module is loaded
-if (-Not (Get-Module -Name ImportExcel)) {
-    Write-Output "Failed to load ImportExcel module."
-    exit
-}
-
 # Start counting individual VM SKUs
 # Check if the worksheet 'All_Assessed_Machines' exists in the Excel file
-$worksheetExists = $false
-try {
-    $worksheets = Get-ExcelSheetInfo -Path $filePath
-    $worksheetExists = $worksheets | Where-Object { $_.Name -eq 'All_Assessed_Machines' }
-} catch {
-    Write-Output "Error accessing the Excel file: $_"
+$worksheets = Get-ExcelSheetInfo -Path $filePath
+if (-not $worksheets) {
+    Write-Output "Error accessing the Excel file: No worksheets found or file could not be read."
     exit
 }
-if (-Not $worksheetExists) {
+$worksheetExists = $worksheets | Where-Object { $_.Name -eq 'All_Assessed_Machines' }
+if ( $worksheetExists) {} else {
     Write-Output "Worksheet 'All_Assessed_Machines' not found in the Excel file."
-    exit
 }
 # If the worksheet exists, proceed with importing data
 # Import the Excel file
@@ -72,7 +48,7 @@ $VMskus = @()
 
 # Loop through each group and display the recommended VM sizes
 foreach ($Group in $Data) {
-    Write-Output "Recommended Size: $($Group.Name) - Count: $($Group.Count)" -ForegroundColor Cyan
+    Write-Output "Recommended Size: $($Group.Name) - Count: $($Group.Count)"
     # Add to output object
     $VMskus += @{
         vmSize  = $Group.Name
@@ -81,17 +57,14 @@ foreach ($Group in $Data) {
 
 # Start counting individual Disk SKUs
 # Check if the worksheet 'All_Assessed_Disks' exists in the Excel file
-$worksheetExists = $false
-try {
-    $worksheets = Get-ExcelSheetInfo -Path $filePath
-    $worksheetExists = $worksheets | Where-Object { $_.Name -eq 'All_Assessed_Disks' }
-} catch {
-    Write-Output "Error accessing the Excel file: $_"
+$worksheets = Get-ExcelSheetInfo -Path $filePath
+if (-not $worksheets) {
+    Write-Output "Error accessing the Excel file: No worksheets found or file could not be read."
     exit
 }
-if (-Not $worksheetExists) {
+$worksheetExists = $worksheets | Where-Object { $_.Name -eq 'All_Assessed_Disks' }
+if ( $worksheetExists) {} else {
     Write-Output "Worksheet 'All_Assessed_Disks' not found in the Excel file."
-    exit
 }
 # If the worksheet exists, proceed with importing data
 # Import the Excel file
@@ -102,18 +75,23 @@ $diskSkus = @()
 
 # Add to output object
 foreach ($Group in $Data) {
-    Write-Output "Recommended Disk Size SKU: $($Group.Name) - Count: $($Group.Count)" -ForegroundColor Cyan
+    Write-Output "Recommended Disk Size SKU: $($Group.Name) - Count: $($Group.Count)" 
     $diskSkus += @{
-        name = if ($Group.Name -like "PremiumV2*") { "PremiumV2_LRS" } else {
-                    if ($Group.Name -like "Premium*") { "Premium_LRS" } else {
-                        if ($Group.Name -like "StandardSSD*") { "StandardSSD_LRS" } else {
-                            if ($Group.Name -like "Standard*") { "Standard_LRS" } else {
-                                if ($Group.Name -like "Ultra*") { "UltraSSD_LRS" } else { "Unknown" } } } } }
-            tier = $Group.Name -replace "Premium|Standard|Ultra", "" # Extract size from SKU name
+        name = switch -Wildcard ($Group.Name) {
+            "PremiumV2*"    { "PremiumV2_LRS"; break }
+            "Premium*"      { "Premium_LRS"; break }
+            "StandardSSD*"  { "StandardSSD_LRS"; break }
+            "Standard*"     { "Standard_LRS"; break }
+            "Ultra*"        { "UltraSSD_LRS"; break }
+            default         { "Unknown" }
+        }
+        tier = $Group.Name -replace "Premium|Standard|Ultra", "" # Extract size from SKU name
 
     }
 }
 
+# As long as we don't care about a specific region in the data collection phase, we can use a dummy value
+$dummyRegion = "dummyregion"
 
 # Build the final object
 $output = @(
@@ -121,13 +99,13 @@ $output = @(
         ResourceCount = $diskSkus.Count
         ResourceType = "microsoft.compute/disks"
         ResourceSkus = $diskSkus
-        AzureRegions = @("dummyregion") # Replace with actual region if needed
+        AzureRegions = @($dummyRegion) # Replace with actual region if needed
     },
     @{
         ResourceCount = $VMskus.Count
         ResourceType = "microsoft.compute/virtualmachines"
         ResourceSkus = $VMskus
-        AzureRegions = @("dummyregion") # Replace with actual region if needed
+        AzureRegions = @($dummyRegion) # Replace with actual region if needed
     }
 )
 
@@ -135,4 +113,4 @@ $output = @(
 $jsonOutput = $output | ConvertTo-Json -Depth 10
 # Save the JSON output to a file
 $jsonOutput | Out-File -FilePath $outputFile -Encoding utf8
-Write-Output "JSON output saved to $outputFile" -ForegroundColor Green
+Write-Output "JSON output saved to $outputFile"

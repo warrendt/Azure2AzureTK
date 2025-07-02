@@ -162,6 +162,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     }    
 }
 
+# Output in the desired format
 switch ($outputFormat) {
     "json" {
         if ($outputFile -notmatch '\.json$') {

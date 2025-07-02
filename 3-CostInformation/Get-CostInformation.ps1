@@ -53,7 +53,7 @@ if ($outputFormat -notin @("json", "csv", "excel", "console")) {
     exit 1
 }
 
-# Check if the needed modules are installed 
+# Check if the needed modules are installed
 if (-not (Get-Module -ListAvailable -Name Az.CostManagement)) {
     Write-Error "Az.CostManagement module is not installed. Please install it using 'Install-Module -Name Az.CostManagement'."
     exit 1

@@ -41,16 +41,26 @@
 .FUNCTION Get-Method
     Determines the appropriate method to retrieve resource-specific data based on the resource type and flag type.
 
+.FUNCTION New-CostReport
+    Generates a cost report for a specified subscription by invoking the Azure REST API and retrieves cost details
+    for the previous month.
+
+.FUNCTION Get-CostReportDetails
+    Fetches the cost report details from the Azure REST API and processes the results.
+
+.FUNCTION Get-MeterIds
+    Retrieves unique meter IDs associated with a specific resource ID from the cost details CSV.
+
 .EXAMPLE
-    PS C:\> .\assess_resources.ps1 -scopeType singleSubscription -subscriptionId "12345678-1234-1234-1234-123456789abc"
+    PS C:\> .\Get-AzureServices.ps1 -scopeType singleSubscription -subscriptionId "12345678-1234-1234-1234-123456789abc"
     Runs the script for a single subscription with the specified subscription ID and outputs the results to the default file.
 
 .EXAMPLE
-    PS C:\> .\assess_resources.ps1 -scopeType resourceGroup -resourceGroupName "MyResourceGroup"
+    PS C:\> .\Get-AzureServices.ps1 -scopeType resourceGroup -resourceGroupName "MyResourceGroup"
     Runs the script for a specific resource group within the current subscription and outputs the results to the default file.
 
 .EXAMPLE
-    PS C:\> .\assess_resources.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -fullOutputFile "output.json"
+    PS C:\> .\Get-AzureServices.ps1 -scopeType multiSubscription -workloadFile "subscriptions.json" -fullOutputFile "output.json"
     Runs the script for multiple subscriptions defined in the workload file and outputs the results to "output.json".
 
 
@@ -97,9 +107,13 @@ Function Get-MultiLoop {
     foreach ($subscription in $workloads.subscriptions) {
         $basequery = "resources | where subscriptionId == '$subscription'"
         Get-SingleData -query $basequery
+        New-CostReport -SubscriptionId $subscription
+        Get-CostReportDetails -PathForResult $pathForResult
+        $tempCostArray += $Script:costdetails
         $tempArray += $Script:baseresult
     }
     $Script:baseresult = $tempArray
+    $Script:costdetails = $tempCostArray
 }
 
 Function Get-Property {
@@ -191,6 +205,68 @@ Function Get-Method {
     }
 }
 
+Function New-CostReport {
+    param (
+        [Parameter(Mandatory = $true)] [string]$SubscriptionId
+    )
+    $uri = "https://management.azure.com/subscriptions/$($SubscriptionId)/providers/Microsoft.CostManagement/generateCostDetailsReport?api-version=2025-03-01"
+    # Get Previous month
+    $lastMonth = (Get-Date).AddMonths(-1)
+    $startDate = Get-Date -Year $lastMonth.Year -Month $lastMonth.Month -Day 1
+    $endDate = $startDate.AddMonths(1).AddDays(-1)
+    # Define the request body
+    $body = @{
+        metric     = "ActualCost"
+        timePeriod = @{
+            start = $startDate.ToString("yyyy-MM-dd")
+            end   = $endDate.ToString("yyyy-MM-dd")
+        }
+    }
+    #Convert the body to JSON
+    $bodyJson = $body | ConvertTo-Json
+    $result = invoke-AzRestMethod -Uri $uri -Method POST -Payload $bodyJson
+    $pathForResult = "https://management.azure.com" + $result.Headers.Location.AbsolutePath + "?api-version=2025-03-01"
+    write-output "Cost report request submitted. Path for result: $pathForResult"
+    Set-Variable -Name 'pathForResult' -Value $pathForResult -Scope Script
+}
+
+Function Get-CostReportDetails {
+    param (
+        [Parameter(Mandatory = $true)] [string]$PathForResult
+    )
+    $i = 0
+    $details = Invoke-AzRestMethod -uri $PathForResult -Method GET
+    # Loop until $details.statuscode is 200
+    while ($details.StatusCode -eq 202) {
+        Start-Sleep -Seconds 10
+        $i = $i + 10
+        $details = Invoke-AzRestMethod -uri $PathForResult -Method GET
+        Write-Output "Waiting for the cost report to be ready. Elapsed time: $i seconds"
+    }
+    "Cost report is ready. Downloading the report..."
+    $subscriptionID = (($details.Content | ConvertFrom-Json).manifest.requestContext.requestScope) -replace "^/subscriptions/", "" -replace "/$", ""
+    $blobLink = ($details.Content | ConvertFrom-Json).manifest.blobs.bloblink
+    $blobContent = Invoke-RestMethod -Uri $blobLink -Method Get
+    $blobContent | out-file "$subscriptionID.csv"
+    $csv = Import-Csv -Path "$subscriptionID.csv"
+    Set-Variable -name costdetails -Value $csv -Scope Script
+}
+
+Function Get-MeterIds {
+    param (
+        [Parameter(Mandatory = $true)] [string]$ResourceId,
+        [Parameter(Mandatory = $true)] [PSCustomObject]$csvObject
+    )
+    $outputArray = @()
+    $meterIds = $csvObject | Where-Object { $_.resourceId -eq $ResourceId } | Select-Object meterId -Unique
+    # For each meterId, get the meterId value and add it to the output array
+    foreach ($meterId in $meterIds) {
+        $outputArray += $meterId.meterId
+    }
+    Set-Variable -Name 'meterIds' -Value $outputArray -Scope Script
+}
+
+
 # Main script starts here
 # Turn off breaking change warnings for Azure PowerShell, for Get-AzMetric CmdLet
 Set-Item -Path Env:\SuppressAzurePowerShellBreakingChangeWarnings -Value $true
@@ -204,6 +280,8 @@ Switch ($scopeType) {
         }
         $baseQuery = "resources | where subscriptionId == '$subscriptionId'"
         Get-SingleData -query $baseQuery
+        New-CostReport -SubscriptionId $subscriptionId
+        Get-CostReportDetails -PathForResult $pathForResult
     }
     'resourceGroup' {
         # KQL Query to get all resources in a specific resource group and subscription
@@ -212,6 +290,8 @@ Switch ($scopeType) {
         }
         $baseQuery = "resources | where resourceGroup == '$resourceGroupName' and subscriptionId == '$subscriptionId'"
         Get-SingleData -query $baseQuery
+        New-CostReport -SubscriptionId $subscriptionId
+        Get-CostReportDetails -PathForResult $pathForResult
     }
     'multiSubscription' {
         "multiple subscriptions"
@@ -237,6 +317,10 @@ $baseResult | ForEach-Object {
     Get-Method -resourceType $resourceType -flagType "resiliencyProperties" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "dataSize" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "ipConfig" -object $PSItem
+    # Get csvFile with cost details
+    #$costDetails = Import-Csv -Path "$($subscriptionId).csv"
+    $resourceSubscriptionId
+    Get-MeterIds -ResourceId $resourceId -csvObject $costDetails
     $outObject = [PSCustomObject] @{
         ResourceType           = $resourceType
         ResourceName           = $resourceName
@@ -248,14 +332,20 @@ $baseResult | ForEach-Object {
         resiliencyProperties   = $resiliencyProperties
         dataSizeGB             = $dataSize
         ipAddress              = $ipAddress
+        meterIds               = $meterIds
     }
     $outputArray += $outObject
 }
 $outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $fullOutputFile
+$global:myArray = $outputArray
 $groupedResources = $outputArray | Group-Object -Property ResourceType
 $summary = @()
 foreach ($group in $groupedResources) {
     $resourceType = $group.Name
+    $uniqueMeterIds = $group.Group | Select-Object -Property meterIds -Unique | Select-Object -ExpandProperty meterIds
+    if ($uniqueMeterIds -isnot [System.Array]) {
+        $uniqueMeterIds = @($uniqueMeterIds)
+    }   
     $uniqueLocations = $group.Group | Select-Object -Property ResourceLocation -Unique | Select-Object -ExpandProperty ResourceLocation
     if ($uniqueLocations -isnot [System.Array]) {
         $uniqueLocations = @($uniqueLocations)
@@ -263,10 +353,10 @@ foreach ($group in $groupedResources) {
     If ($group.Group.ResourceSku -ne 'N/A') {
 
         $uniqueSkus = $group.Group.ResourceSku | Select-Object * -Unique
-        $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = $uniqueSkus; AzureRegions = $uniqueLocations }
+        $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = $uniqueSkus; AzureRegions = $uniqueLocations; meterIds = $uniqueMeterIds }
     }
     Else {
-        $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = @("N/A"); AzureRegions = $uniqueLocations }
+        $summary += [PSCustomObject]@{ResourceCount = $group.Count; ResourceType = $resourceType; ResourceSkus = @("N/A"); AzureRegions = $uniqueLocations; meterIds = $uniqueMeterIds }
     }
 }
 $summary | ConvertTo-Json -Depth 100 | Out-File -FilePath $summaryOutputFile

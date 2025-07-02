@@ -159,7 +159,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
             $row | Add-Member -MemberType NoteProperty -Name $queryResult.Column.Name[$j] -Value $value
         }
         $table += $row
-    }    
+    }
 }
 
 # Output in the desired format

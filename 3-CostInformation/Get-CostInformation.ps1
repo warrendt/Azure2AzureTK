@@ -63,12 +63,6 @@ if ($outputFormat -eq "excel" -and -not (Get-Module -ListAvailable -Name ImportE
     exit 1
 }
 
-# Timeframe
-$timeframe = "Custom"
-
-# Type
-$type = "AmortizedCost"
-
 # Read the content of the workloads file
 $jsonContent = Get-Content -Path $resourceFile -Raw
 
@@ -79,6 +73,10 @@ $resourceTable = $workloads | Select-Object ResourceSubscriptionId, ResourceId
 if ($testMode) {
     $subscriptionIds = @($subscriptionIds[0]) # For testing, use only the first subscription ID
 }
+
+# Query parameters
+$timeframe = "Custom"
+$type = "AmortizedCost"
 
 $grouping = @(
     @{
@@ -104,10 +102,13 @@ $grouping = @(
     @{
         type = "Dimension"
         name = "Meter"
+    },
+    @{
+        type = "Dimension"
+        name = "MeterId"
     }
 )
 
-# Aggregation
 $aggregation = @{
     PreTaxCost = @{
         type = "Sum"
@@ -116,14 +117,14 @@ $aggregation = @{
 }
 
 $table = @()
-
 $subscriptionIds = $resourceTable.ResourceSubscriptionId | Sort-Object -Unique
 
 if ($subscriptionIds.Count -eq 1) {
     $subscriptionIds = @($subscriptionIds) # If only one subscription ID is found, use it as an array
 }
 
-# Loop through subscription IDs and issue a cost management query for the resources in each subscription
+# Group the resources by subscription and issue a cost management query for each subscription
+# This reduces the number of API calls and allows us to handle multiple subscriptions efficiently.
 
 for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     $scope = "/subscriptions/$($subscriptionIds[$subIndex])"
@@ -149,16 +150,16 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
     for ($i = 0; $i -lt $queryResult.Row.Count; $i++) {
         $row = [PSCustomObject]@{}
         for ($j = 0; $j -lt $queryResult.Column.Count; $j++) {
-            $row | Add-Member -MemberType NoteProperty -Name $queryResult.Column.Name[$j] -Value $queryResult.Row[$i][$j]
+            # For column BillingMonth we output it as yyyy-MM
+            if ($queryResult.Column.Name[$j] -eq "BillingMonth" -and $queryResult.Column.Type[$j] -eq "Datetime") {
+                $value = Get-Date $queryResult.Row[$i][$j] -Format "yyyy-MM"
+            } else {
+                $value = $queryResult.Row[$i][$j]
+            }
+            $row | Add-Member -MemberType NoteProperty -Name $queryResult.Column.Name[$j] -Value $value
         }
         $table += $row
-    }
-    
-    # If test mode is enabled, break after the first subscription
-    if ($testMode) {
-        Write-Output "Test mode enabled, stopping after the first subscription."
-        $subIndex = $subscriptionIds.Count
-    }
+    }    
 }
 
 switch ($outputFormat) {

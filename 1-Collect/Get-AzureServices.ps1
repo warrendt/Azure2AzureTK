@@ -45,7 +45,7 @@
 .FUNCTION Get-Method
     Determines the appropriate method to retrieve resource-specific data based on the resource type and flag type.
 
-.FUNCTION New-CostReport
+.FUNCTION Invoke-CostReportSchedule
     Generates a cost report for a specified subscription by invoking the Azure REST API and retrieves cost details
     for the previous month.
 
@@ -114,7 +114,7 @@ Function Get-MultiLoop {
         Get-SingleData -query $basequery
         $tempArray += $Script:baseresult
         If ($includeCost) {
-            New-CostReport -SubscriptionId $subscription
+            Invoke-CostReportSchedule -SubscriptionId $subscription
             Get-CostReport -PathForResult $pathForResult
             $tempCostArray += $Script:costdetails
         }
@@ -212,7 +212,7 @@ Function Get-Method {
     }
 }
 
-Function New-CostReport {
+Function Invoke-CostReportSchedule {
     param (
         [Parameter(Mandatory = $true)] [string]$SubscriptionId
     )
@@ -287,7 +287,7 @@ Switch ($scopeType) {
         Get-SingleData -query $baseQuery
         If ($includeCost) {
             # Generate cost report for the subscription
-            New-CostReport -SubscriptionId $subscriptionId
+            Invoke-CostReportSchedule -SubscriptionId $subscriptionId
             Get-CostReport -PathForResult $pathForResult
         }
     }
@@ -300,7 +300,7 @@ Switch ($scopeType) {
         Get-SingleData -query $baseQuery
         If ($includeCost) {
             # Generate cost report for the subscription
-            New-CostReport -SubscriptionId $subscriptionId
+            Invoke-CostReportSchedule -SubscriptionId $subscriptionId
             Get-CostReport -PathForResult $pathForResult
         }
     }

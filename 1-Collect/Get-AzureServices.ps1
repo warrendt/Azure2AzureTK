@@ -49,10 +49,10 @@
     Generates a cost report for a specified subscription by invoking the Azure REST API and retrieves cost details
     for the previous month.
 
-.FUNCTION Get-CostReportDetails
+.FUNCTION Get-CostReport
     Fetches the cost report details from the Azure REST API and processes the results.
 
-.FUNCTION Get-MeterIds
+.FUNCTION Get-MeterId
     Retrieves unique meter IDs associated with a specific resource ID from the cost details CSV.
 
 .EXAMPLE
@@ -115,7 +115,7 @@ Function Get-MultiLoop {
         $tempArray += $Script:baseresult
         If ($includeCost) {
             New-CostReport -SubscriptionId $subscription
-            Get-CostReportDetails -PathForResult $pathForResult
+            Get-CostReport -PathForResult $pathForResult
             $tempCostArray += $Script:costdetails
         }
     }
@@ -235,7 +235,7 @@ Function New-CostReport {
     Set-Variable -Name 'pathForResult' -Value $pathForResult -Scope Script
 }
 
-Function Get-CostReportDetails {
+Function Get-CostReport {
     param (
         [Parameter(Mandatory = $true)] [string]$PathForResult
     )
@@ -257,7 +257,7 @@ Function Get-CostReportDetails {
     Set-Variable -name costdetails -Value $csv -Scope Script
 }
 
-Function Get-MeterIds {
+Function Get-MeterId {
     param (
         [Parameter(Mandatory = $true)] [string]$ResourceId,
         [Parameter(Mandatory = $true)] [PSCustomObject]$csvObject
@@ -288,7 +288,7 @@ Switch ($scopeType) {
         If ($includeCost) {
             # Generate cost report for the subscription
             New-CostReport -SubscriptionId $subscriptionId
-            Get-CostReportDetails -PathForResult $pathForResult
+            Get-CostReport -PathForResult $pathForResult
         }
     }
     'resourceGroup' {
@@ -301,7 +301,7 @@ Switch ($scopeType) {
         If ($includeCost) {
             # Generate cost report for the subscription
             New-CostReport -SubscriptionId $subscriptionId
-            Get-CostReportDetails -PathForResult $pathForResult
+            Get-CostReport -PathForResult $pathForResult
         }
     }
     'multiSubscription' {
@@ -342,7 +342,7 @@ $baseResult | ForEach-Object {
         meterIds               = $meterIds
     }
     If ($includeCost) {
-        Get-MeterIds -ResourceId $resourceId -csvObject $costDetails
+        Get-MeterId -ResourceId $resourceId -csvObject $costDetails
         # add meterIds to the output object
         $outObject.meterIds += $meterIds
     }

@@ -25,6 +25,10 @@
 .PARAMETER summaryOutputFile
     The name of the output file where the summary will be exported. Default is "summary.json".
 
+.PARAMETER includeCost
+    A boolean flag indicating whether to include cost report generation. Default is $false. Note that this requires the identity
+    running the script to have permissions to access cost management APIs, i.e. Cost Management Contributor role.
+
 .FUNCTION Get-SingleData
     Queries Azure Resource Graph for resources within a single subscription and retrieves all results,
     handling pagination if necessary.
@@ -79,7 +83,8 @@ param(
     [Parameter(Mandatory = $false)] [string] $resourceGroupName, # resource group to run the query against
     [Parameter(Mandatory = $false)] [string] $workloadFile, # JSON file containing subscriptions
     [Parameter(Mandatory = $false)] [string] $fullOutputFile = "resources.json", # Json file to export the results to
-    [Parameter(Mandatory = $false)] [string] $summaryOutputFile = "summary.json" # Json file to export the results to
+    [Parameter(Mandatory = $false)] [string] $summaryOutputFile = "summary.json", # Json file to export the results to
+    [Parameter(Mandatory = $false)] [bool] $includeCost = $false # Include cost report
 )
 
 Function Get-SingleData {
@@ -107,10 +112,12 @@ Function Get-MultiLoop {
     foreach ($subscription in $workloads.subscriptions) {
         $basequery = "resources | where subscriptionId == '$subscription'"
         Get-SingleData -query $basequery
-        New-CostReport -SubscriptionId $subscription
-        Get-CostReportDetails -PathForResult $pathForResult
-        $tempCostArray += $Script:costdetails
         $tempArray += $Script:baseresult
+        If ($includeCost) {
+            New-CostReport -SubscriptionId $subscription
+            Get-CostReportDetails -PathForResult $pathForResult
+            $tempCostArray += $Script:costdetails
+        }
     }
     $Script:baseresult = $tempArray
     $Script:costdetails = $tempCostArray
@@ -210,10 +217,8 @@ Function New-CostReport {
         [Parameter(Mandatory = $true)] [string]$SubscriptionId
     )
     $uri = "https://management.azure.com/subscriptions/$($SubscriptionId)/providers/Microsoft.CostManagement/generateCostDetailsReport?api-version=2025-03-01"
-    # Get Previous month
-    $lastMonth = (Get-Date).AddMonths(-1)
-    $startDate = Get-Date -Year $lastMonth.Year -Month $lastMonth.Month -Day 1
-    $endDate = $startDate.AddMonths(1).AddDays(-1)
+    $startDate =(Get-Date).AddDays(-1)
+    $endDate = (Get-Date)
     # Define the request body
     $body = @{
         metric     = "ActualCost"
@@ -280,8 +285,11 @@ Switch ($scopeType) {
         }
         $baseQuery = "resources | where subscriptionId == '$subscriptionId'"
         Get-SingleData -query $baseQuery
-        New-CostReport -SubscriptionId $subscriptionId
-        Get-CostReportDetails -PathForResult $pathForResult
+        If ($includeCost) {
+            # Generate cost report for the subscription
+            New-CostReport -SubscriptionId $subscriptionId
+            Get-CostReportDetails -PathForResult $pathForResult
+        }
     }
     'resourceGroup' {
         # KQL Query to get all resources in a specific resource group and subscription
@@ -290,8 +298,11 @@ Switch ($scopeType) {
         }
         $baseQuery = "resources | where resourceGroup == '$resourceGroupName' and subscriptionId == '$subscriptionId'"
         Get-SingleData -query $baseQuery
-        New-CostReport -SubscriptionId $subscriptionId
-        Get-CostReportDetails -PathForResult $pathForResult
+        If ($includeCost) {
+            # Generate cost report for the subscription
+            New-CostReport -SubscriptionId $subscriptionId
+            Get-CostReportDetails -PathForResult $pathForResult
+        }
     }
     'multiSubscription' {
         "multiple subscriptions"
@@ -317,10 +328,6 @@ $baseResult | ForEach-Object {
     Get-Method -resourceType $resourceType -flagType "resiliencyProperties" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "dataSize" -object $PSItem
     Get-Method -resourceType $resourceType -flagType "ipConfig" -object $PSItem
-    # Get csvFile with cost details
-    #$costDetails = Import-Csv -Path "$($subscriptionId).csv"
-    $resourceSubscriptionId
-    Get-MeterIds -ResourceId $resourceId -csvObject $costDetails
     $outObject = [PSCustomObject] @{
         ResourceType           = $resourceType
         ResourceName           = $resourceName
@@ -334,10 +341,14 @@ $baseResult | ForEach-Object {
         ipAddress              = $ipAddress
         meterIds               = $meterIds
     }
+    If ($includeCost) {
+        Get-MeterIds -ResourceId $resourceId -csvObject $costDetails
+        # add meterIds to the output object
+        $outObject.meterIds += $meterIds
+    }
     $outputArray += $outObject
 }
 $outputArray | ConvertTo-Json -Depth 100 | Out-File -FilePath $fullOutputFile
-$global:myArray = $outputArray
 $groupedResources = $outputArray | Group-Object -Property ResourceType
 $summary = @()
 foreach ($group in $groupedResources) {
@@ -345,7 +356,8 @@ foreach ($group in $groupedResources) {
     $uniqueMeterIds = $group.Group | Select-Object -Property meterIds -Unique | Select-Object -ExpandProperty meterIds
     if ($uniqueMeterIds -isnot [System.Array]) {
         $uniqueMeterIds = @($uniqueMeterIds)
-    }   
+    }
+    $uniqueMeterIds = $uniqueMeterIds | Select-Object -Unique
     $uniqueLocations = $group.Group | Select-Object -Property ResourceLocation -Unique | Select-Object -ExpandProperty ResourceLocation
     if ($uniqueLocations -isnot [System.Array]) {
         $uniqueLocations = @($uniqueLocations)

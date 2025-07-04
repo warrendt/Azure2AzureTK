@@ -75,7 +75,7 @@ $diskSkus = @()
 
 # Add to output object
 foreach ($Group in $Data) {
-    Write-Output "Recommended Disk Size SKU: $($Group.Name) - Count: $($Group.Count)" 
+    Write-Output "Recommended Disk Size SKU: $($Group.Name) - Count: $($Group.Count)"
     $diskSkus += @{
         name = switch -Wildcard ($Group.Name) {
             "PremiumV2*"    { "PremiumV2_LRS"; break }

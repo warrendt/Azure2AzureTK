@@ -77,12 +77,9 @@ if ($testMode) {
 # Query parameters
 $timeframe = "Custom"
 $type = "AmortizedCost"
+$granularity = "Monthly"
 
 $grouping = @(
-    @{
-        type = "Dimension"
-        name = "BillingMonth"
-    },
     @{
         type = "Dimension"
         name = "ResourceId"
@@ -105,8 +102,8 @@ $grouping = @(
     },
     @{
         type = "Dimension"
-        name = "MeterId"
-    }
+        name = "ResourceGuid"
+   }
 )
 
 $aggregation = @{
@@ -143,15 +140,15 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
         -TimePeriodTo $endDate `
         -DatasetAggregation $aggregation `
         -DatasetGrouping $grouping `
-        -DatasetFilter $filter
-        # -DatasetGranularity $granularity
+        -DatasetFilter $filter `
+        -DatasetGranularity $granularity
 
     # Convert the query result into a table
     for ($i = 0; $i -lt $queryResult.Row.Count; $i++) {
         $row = [PSCustomObject]@{}
         for ($j = 0; $j -lt $queryResult.Column.Count; $j++) {
             # For column BillingMonth we output it as yyyy-MM
-            if ($queryResult.Column.Name[$j] -eq "BillingMonth" -and $queryResult.Column.Type[$j] -eq "Datetime") {
+            if ($queryResult.Column.Name[$j] -eq "BillingMoooonth" -and $queryResult.Column.Type[$j] -eq "Datetime") {
                 $value = Get-Date $queryResult.Row[$i][$j] -Format "yyyy-MM"
             } else {
                 $value = $queryResult.Row[$i][$j]

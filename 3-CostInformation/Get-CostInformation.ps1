@@ -148,7 +148,7 @@ for ($subIndex = 0; $subIndex -lt $subscriptionIds.Count; $subIndex++) {
         $row = [PSCustomObject]@{}
         for ($j = 0; $j -lt $queryResult.Column.Count; $j++) {
             # For column BillingMonth we output it as yyyy-MM
-            if ($queryResult.Column.Name[$j] -eq "BillingMoooonth" -and $queryResult.Column.Type[$j] -eq "Datetime") {
+            if ($queryResult.Column.Name[$j] -eq "BillingMonth" -and $queryResult.Column.Type[$j] -eq "Datetime") {
                 $value = Get-Date $queryResult.Row[$i][$j] -Format "yyyy-MM"
             } else {
                 $value = $queryResult.Row[$i][$j]

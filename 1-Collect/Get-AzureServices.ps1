@@ -263,9 +263,11 @@ Function Get-MeterId {
         [Parameter(Mandatory = $true)] [PSCustomObject]$csvObject
     )
     $outputArray = @()
-    $meterIds = $csvObject | Where-Object { $_.resourceId -eq $ResourceId } | Select-Object meterId -Unique
+    #Reset variable to avoid conflicts
+    Set-Variable -Name 'meterIds' -Value @() -scope script
+    $resMeterIds = $csvObject | Where-Object { $_.resourceId -eq $ResourceId } | Select-Object meterId -Unique
     # For each meterId, get the meterId value and add it to the output array
-    foreach ($meterId in $meterIds) {
+    foreach ($meterId in $resMeterIds) {
         $outputArray += $meterId.meterId
     }
     Set-Variable -Name 'meterIds' -Value $outputArray -Scope Script
@@ -339,7 +341,7 @@ $baseResult | ForEach-Object {
         resiliencyProperties   = $resiliencyProperties
         dataSizeGB             = $dataSize
         ipAddress              = $ipAddress
-        meterIds               = $meterIds
+        meterIds               = @()
     }
     If ($includeCost) {
         Get-MeterId -ResourceId $resourceId -csvObject $costDetails

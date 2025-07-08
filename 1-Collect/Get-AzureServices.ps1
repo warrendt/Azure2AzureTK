@@ -356,10 +356,10 @@ $summary = @()
 foreach ($group in $groupedResources) {
     $resourceType = $group.Name
     $uniqueMeterIds = $group.Group | Select-Object -Property meterIds -Unique | Select-Object -ExpandProperty meterIds
+        $uniqueMeterIds = $uniqueMeterIds | Select-Object -Unique
     if ($uniqueMeterIds -isnot [System.Array]) {
         $uniqueMeterIds = @($uniqueMeterIds)
     }
-    $uniqueMeterIds = $uniqueMeterIds | Select-Object -Unique
     $uniqueLocations = $group.Group | Select-Object -Property ResourceLocation -Unique | Select-Object -ExpandProperty ResourceLocation
     if ($uniqueLocations -isnot [System.Array]) {
         $uniqueLocations = @($uniqueLocations)

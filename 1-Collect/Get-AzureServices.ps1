@@ -221,7 +221,7 @@ Function Invoke-CostReportSchedule {
     $endDate = (Get-Date)
     # Define the request body
     $body = @{
-        metric     = "ActualCost"
+        metric     = "AmortizedCost"
         timePeriod = @{
             start = $startDate.ToString("yyyy-MM-dd")
             end   = $endDate.ToString("yyyy-MM-dd")

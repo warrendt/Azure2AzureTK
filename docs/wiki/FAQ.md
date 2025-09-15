@@ -7,11 +7,11 @@ Does the Azure to Azure migration toolkit work on Mac?
 
 1. Install homebrew if you do not have it. Open a terminal and run
 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+/bin/bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh](https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh))"
 
-More info can be found here. https://brew.sh/
+More info can be found here: [https://brew.sh/](https://brew.sh/)
 
-2. Once homebrew is installed, Install PowerShell.
+1. Once homebrew is installed, Install PowerShell.
 
 brew install powershell 
 
